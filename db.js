@@ -116,6 +116,6 @@ module.exports = function (dbURL)
             {
                 resolve();
             }, 500);
-        })
+        });
     }
 };

@@ -1,4 +1,4 @@
-Bitcoin Trading Algorigthm
+Bitcoin Trading Algorigthm [ ![Codeship Status for glesage/trader](https://app.codeship.com/projects/a9a273e0-c349-0134-4a6e-3a3b5ceba39a/status?branch=master)](https://app.codeship.com/projects/197567)
 ================
 
 #### Installation
