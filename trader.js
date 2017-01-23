@@ -29,8 +29,8 @@ module.exports = function (RISK, FEE)
         var riskCoeficient = (RISK / 2) + FEE;
         var data = {
             timestamp: trade.timestamp,
-            support: price + (price * riskCoeficient),
-            resistance: price - (price * riskCoeficient)
+            support: price - (price * riskCoeficient),
+            resistance: price + (price * riskCoeficient)
         };
 
         if (!highestSupportZone || highestSupportZone < data.support)
