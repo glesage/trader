@@ -1,8 +1,8 @@
 /* Dependencies */
 var BitfinexWS = require('bitfinex-api-node');
-var TradeSheet = require('./sheet');
-var Trader = require('./trader');
-var DB = require('./db');
+var TradeSheet = require('./lib/sheet');
+var Trader = require('./lib/trader');
+var DB = require('./lib/db');
 
 
 var sheet = new TradeSheet(process.env.DRIVE_SHEET, process.env.DRIVE_CREDS);
