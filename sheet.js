@@ -1,22 +1,24 @@
 /* Dependencies */
 var GoogleSpreadsheet = require("google-sheets-node-api");
 
-//Main export
+/**
+ * Sheets responsible for displaying data on google drive sheets
+ * mostly for logging & monitoring purposes
+ *
+ * Takes a Sheet ID and credentials string
+ */
 module.exports = function (SHEETS_ID, SHEETS_CREDS)
 {
+    var mySheet = new GoogleSpreadsheet(SHEETS_ID);
+
     var self = this;
     self.recordTrade = recordTrade;
-    self.updateTraderData = updateTraderData;
-
-    var mySheet = new GoogleSpreadsheet(SHEETS_ID);
+    self.recordTraderData = recordTraderData;
     return self;
 
     /* Public */
     function recordTrade(trade)
     {
-        if (parseFloat(trade.amount) < 0) trade.type = 'sell';
-        if (parseFloat(trade.amount) > 0) trade.type = 'buy';
-
         return checkReady().then(function ()
         {
             var worksheet = getWorksheet('trades');
@@ -25,14 +27,18 @@ module.exports = function (SHEETS_ID, SHEETS_CREDS)
         });
     }
 
-    function updateTraderData(data)
+    function recordTrade(trade)
     {
-        if (!data) return Promise.reject(new Error('Data must be specified'));
-        if (!data.timestamp) return Promise.reject(new Error('Data must have timestamp specified'));
-        if (!data.average) return Promise.reject(new Error('Data must have average specified'));
-        if (!data.support) return Promise.reject(new Error('Data must have support specified'));
-        if (!data.resistance) return Promise.reject(new Error('Data must have resistance specified'));
+        return checkReady().then(function ()
+        {
+            var worksheet = getWorksheet('trades');
+            if (!worksheet) noWorkSheetError('trades');
+            return worksheet.addRow(trade);
+        });
+    }
 
+    function recordTraderData(data)
+    {
         return checkReady().then(function ()
         {
             var worksheet = getWorksheet('trader');
@@ -68,13 +74,14 @@ module.exports = function (SHEETS_ID, SHEETS_CREDS)
 
     function authenticate()
     {
-        return mySheet.useServiceAccountAuth(SHEETS_CREDS).then(function (res)
-        {
-            return mySheet.getSpreadsheet();
-        }).then(function (sheetInfo)
-        {
-            mySheet.sheetInfo = sheetInfo;
-            self.ready = true;
-        });
+        return mySheet.useServiceAccountAuth(JSON.parse(SHEETS_CREDS))
+            .then(function (res)
+            {
+                return mySheet.getSpreadsheet();
+            }).then(function (sheetInfo)
+            {
+                mySheet.sheetInfo = sheetInfo;
+                self.ready = true;
+            });
     }
 };

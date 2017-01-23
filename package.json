@@ -5,6 +5,7 @@
     "dependencies":
     {
         "bitfinex-api-node": "0",
-        "google-sheets-node-api": "0.3"
+        "google-sheets-node-api": "0.3",
+        "mongodb": "2.2"
     }
 }

@@ -1,16 +1,14 @@
-// var moment = require('moment');
+/* Dependencies */
 var BitfinexWS = require('bitfinex-api-node');
 var TradeSheet = require('./sheet');
 var Trader = require('./trader');
+var DB = require('./db');
 
 
-var driveCreds = JSON.parse(process.env.DRIVE_CREDS);
-var sheet = new TradeSheet(process.env.DRIVE_SHEET, driveCreds);
+var sheet = new TradeSheet(process.env.DRIVE_SHEET, process.env.DRIVE_CREDS);
 var bws = new BitfinexWS(process.env.BIT_KEY, process.env.BIT_SECRET).ws;
-var trader = new Trader(process.env.RISK, process.env.FEE);
-
-
-startCalculating();
+var trader = new Trader(parseFloat(process.env.RISK), parseFloat(process.env.FEE));
+var db = new DB(process.env.MONGO_URL);
 
 
 /**
@@ -22,22 +20,50 @@ bws.on('open', function ()
 });
 bws.on('trade', function (pair, trade)
 {
-    trader.recordTrade(trade);
-    sheet.recordTrade(trade).catch(console.log);
+    db.recordTrade(trade).catch(console.log);
+
+    var tradeData = trader.inboundTrade(trade);
+    db.recordTraderData(tradeData).catch(console.log);
+
+    checkBuySell(trade.price);
 });
 bws.on('error', console.error);
 
+/**
+ * Check the trader to find out if we should buy or sell
+ */
+function checkBuySell(lastTradePrice)
+{
+    if (trader.timeToBuy(lastTradePrice))
+    {
+        sheet.recordTrade(
+        {
+            price: lastTradePrice,
+            timestamp: Date.now(),
+            type: 'buy',
+            volume: 1
+        });
+        trader.boughtAt(lastTradePrice);
+    }
+    else if (trader.timeToSell(lastTradePrice))
+    {
+        sheet.recordTrade(
+        {
+            price: lastTradePrice,
+            timestamp: Date.now(),
+            type: 'sell',
+            volume: 1
+        });
+        trader.soldAt(lastTradePrice);
+    }
+}
 
 /**
- * Masterminding
- *
- * Every 10 seconds, record to drive what the trader is calculating
+ * Every 30 seconds log in drive what the trader is thinking
+ * for debugging purposes for now
  */
-function startCalculating()
+setInterval(function ()
 {
-    setInterval(function ()
-    {
-        var data = trader.masterpiece();
-        if (data) sheet.updateTraderData(data).catch(console.log);
-    }, 1000);
-}
+    var data = trader.logCurrentData();
+    if (data) sheet.recordTraderData(data).catch(console.log);
+}, 30000);

@@ -1,48 +1,89 @@
+/**
+ * Trader responsible for financial calculations:
+ * - calculating support & resistance lines
+ * - figuring out when to buy or sell
+ *
+ * Takes a risk percentage and fee percentage
+ */
 module.exports = function (RISK, FEE)
 {
+    var highestSupportZone = null;
+    var lowestResistanceZone = null;
+    var lastBuyAt = null;
+
     var self = this;
-    self.recordTrade = recordTrade;
-    self.masterpiece = masterpiece;
+    self.inboundTrade = inboundTrade;
+    self.timeToBuy = timeToBuy;
+    self.timeToSell = timeToSell;
+    self.boughtAt = boughtAt;
+    self.soldAt = soldAt;
+    self.logCurrentData = logCurrentData;
     return self;
 
-    var totalAmount, totalSpent;
-
     /* Public */
-    function recordTrade(trade)
+    function inboundTrade(trade)
     {
         var amount = parseFloat(trade.amount);
         var price = parseFloat(trade.price);
 
-        if (!totalAmount || !totalSpent)
-        {
-            totalAmount = amount;
-            totalSpent = amount * price;
-        }
-        else
-        {
-            totalAmount += amount;
-            totalSpent += amount * price;
-        }
-    }
-
-    function masterpiece()
-    {
-        if (!totalSpent || !totalAmount) return null;
-
-        var data = {
-            timestamp: Date.now(),
-            average: average()
-        };
         var riskCoeficient = (RISK / 2) + FEE;
-        data.support = data.average + (data.average * riskCoeficient);
-        data.resistance = data.average - (data.average * riskCoeficient);
+        var data = {
+            timestamp: trade.timestamp,
+            support: price + (price * riskCoeficient),
+            resistance: price - (price * riskCoeficient)
+        };
+
+        if (!highestSupportZone || highestSupportZone < data.support)
+        {
+            highestSupportZone = data.support;
+        }
+        if (!lowestResistanceZone || lowestResistanceZone > data.resistance)
+        {
+            lowestResistanceZone = data.resistance;
+        }
 
         return data;
     }
 
-    /* private */
-    function average()
+    function timeToBuy(price)
     {
-        return totalSpent / totalAmount;
+        // If the last operation was a buy, don't buy again
+        if (lastBuyAt > 0) return false;
+
+        // If the support zone is lower than the current price, don't try to buy yet
+        if (!highestSupportZone || highestSupportZone < price) return false;
+
+        return true;
+    }
+
+    function timeToSell(price)
+    {
+        // If the last operation was a sell, don't sell again
+        if (!lastBuyAt) return false;
+
+        // If the resistance zone is higher than the current price, don't try to sell yet
+        if (!lowestResistanceZone || lowestResistanceZone > price) return false;
+
+        return true;
+    }
+
+    function boughtAt(price)
+    {
+        lastBuyAt = price;
+    }
+
+    function soldAt(price)
+    {
+        lastBuyAt = null;
+    }
+
+    function logCurrentData()
+    {
+        return {
+            timestamp: Date.now(),
+            highestSupportZone: highestSupportZone,
+            lowestResistanceZone: lowestResistanceZone,
+            lastBuyAt: lastBuyAt
+        };
     }
 };
