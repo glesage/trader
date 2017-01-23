@@ -12,17 +12,28 @@ module.exports = function (SHEETS_ID, SHEETS_CREDS)
     var mySheet = new GoogleSpreadsheet(SHEETS_ID);
 
     var self = this;
-    self.recordTrade = recordTrade;
+    self.recordMyTrade = recordMyTrade;
+    self.recordAllTrade = recordAllTrade;
     self.recordTraderData = recordTraderData;
     return self;
 
     /* Public */
-    function recordTrade(trade)
+    function recordMyTrade(trade)
     {
         return checkReady().then(function ()
         {
-            var worksheet = getWorksheet('trades');
-            if (!worksheet) noWorkSheetError('trades');
+            var worksheet = getWorksheet('my_trades');
+            if (!worksheet) noWorkSheetError('my_trades');
+            return worksheet.addRow(trade);
+        });
+    }
+
+    function recordAllTrade(trade)
+    {
+        return checkReady().then(function ()
+        {
+            var worksheet = getWorksheet('all_trades');
+            if (!worksheet) noWorkSheetError('all_trades');
             return worksheet.addRow(trade);
         });
     }

@@ -21,6 +21,7 @@ bws.on('open', function ()
 bws.on('trade', function (pair, trade)
 {
     db.recordTrade(trade).catch(console.log);
+    sheet.recordAllTrade(trade).catch(console.log);
 
     var tradeData = trader.inboundTrade(trade);
     db.recordTraderData(tradeData).catch(console.log);
@@ -36,24 +37,24 @@ function checkBuySell(lastTradePrice)
 {
     if (trader.timeToBuy(lastTradePrice))
     {
-        sheet.recordTrade(
+        sheet.recordMyTrade(
         {
             price: lastTradePrice,
             timestamp: Date.now(),
             type: 'buy',
             volume: 1
-        });
+        }).catch(console.log);
         trader.boughtAt(lastTradePrice);
     }
     else if (trader.timeToSell(lastTradePrice))
     {
-        sheet.recordTrade(
+        sheet.recordMyTrade(
         {
             price: lastTradePrice,
             timestamp: Date.now(),
             type: 'sell',
             volume: 1
-        });
+        }).catch(console.log);
         trader.soldAt(lastTradePrice);
     }
 }
