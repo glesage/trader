@@ -13,7 +13,7 @@
             "ref": "origin/master",
             "repo": "git@github.com:glesage/trader.git",
             "path": "/root/trader",
-            "post-deploy": "source /root/.starchup_vars && npm install && pm2 startOrRestart ecosystem.json"
+            "post-deploy": "source /root/.trader_vars && npm install && pm2 startOrRestart ecosystem.json"
         }
     }
 }
