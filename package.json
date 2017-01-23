@@ -1,0 +1,10 @@
+{
+    "name": "trader",
+    "version": "1.0.0",
+    "main": "app.js",
+    "dependencies":
+    {
+        "bitfinex-api-node": "0",
+        "google-sheets-node-api": "0.3"
+    }
+}
