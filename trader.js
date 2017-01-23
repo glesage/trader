@@ -9,7 +9,7 @@ module.exports = function (RISK, FEE)
 {
     var highestSupportZone = null;
     var lowestResistanceZone = null;
-    var lastBuyAt = null;
+    var myLastTrade = 0;
 
     var self = this;
     self.inboundTrade = inboundTrade;
@@ -48,7 +48,7 @@ module.exports = function (RISK, FEE)
     function timeToBuy(price)
     {
         // If the last operation was a buy, don't buy again
-        if (lastBuyAt > 0) return false;
+        if (myLastTrade > 0) return false;
 
         // If the support zone is lower than the current price, don't try to buy yet
         if (!highestSupportZone || highestSupportZone < price) return false;
@@ -59,7 +59,7 @@ module.exports = function (RISK, FEE)
     function timeToSell(price)
     {
         // If the last operation was a sell, don't sell again
-        if (!lastBuyAt) return false;
+        if (myLastTrade < 0) return false;
 
         // If the resistance zone is higher than the current price, don't try to sell yet
         if (!lowestResistanceZone || lowestResistanceZone > price) return false;
@@ -69,12 +69,12 @@ module.exports = function (RISK, FEE)
 
     function boughtAt(price)
     {
-        lastBuyAt = price;
+        myLastTrade = price;
     }
 
     function soldAt(price)
     {
-        lastBuyAt = null;
+        myLastTrade = -price;
     }
 
     function logCurrentData()
@@ -83,7 +83,7 @@ module.exports = function (RISK, FEE)
             timestamp: Date.now(),
             highestSupportZone: highestSupportZone,
             lowestResistanceZone: lowestResistanceZone,
-            lastBuyAt: lastBuyAt
+            myLastTrade: myLastTrade
         };
     }
 };
