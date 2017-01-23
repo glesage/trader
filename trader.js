@@ -10,7 +10,7 @@ module.exports = function (RISK, FEE)
     var highestSupportZone = null;
     var lowestResistanceZone = null;
     var myLastTrade = 0;
-    var mustSellZone = 0
+    var mustSellZone = 0;
     var riskCoeficient = (RISK + FEE) / 2;
 
     var self = this;
@@ -93,11 +93,11 @@ module.exports = function (RISK, FEE)
     /* Private */
     function supportZone(price)
     {
-        return price - (price * riskCoeficient)
+        return price - (price * riskCoeficient);
     }
 
     function resistanceZone(price)
     {
-        return price + (price * riskCoeficient)
+        return price + (price * riskCoeficient);
     }
 };
