@@ -1,0 +1,19 @@
+{
+    "apps": [
+    {
+        "name": "Trader",
+        "script": "app.js"
+    }],
+    "deploy":
+    {
+        "prod":
+        {
+            "user": "root",
+            "host": "45.55.146.25",
+            "ref": "origin/master",
+            "repo": "git@github.com:glesage/trader.git",
+            "path": "/root/trader",
+            "post-deploy": "source /root/.starchup_vars && npm install && pm2 startOrRestart ecosystem.json"
+        }
+    }
+}
