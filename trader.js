@@ -10,6 +10,8 @@ module.exports = function (RISK, FEE)
     var highestSupportZone = null;
     var lowestResistanceZone = null;
     var myLastTrade = 0;
+    var mustSellZone = 0
+    var riskCoeficient = (RISK + FEE) / 2;
 
     var self = this;
     self.inboundTrade = inboundTrade;
@@ -26,11 +28,10 @@ module.exports = function (RISK, FEE)
         var amount = parseFloat(trade.amount);
         var price = parseFloat(trade.price);
 
-        var riskCoeficient = (RISK / 2) + FEE;
         var data = {
             timestamp: trade.timestamp,
-            support: price - (price * riskCoeficient),
-            resistance: price + (price * riskCoeficient)
+            support: supportZone(price),
+            resistance: resistanceZone(price)
         };
 
         if (!highestSupportZone || highestSupportZone < data.support)
@@ -70,11 +71,13 @@ module.exports = function (RISK, FEE)
     function boughtAt(price)
     {
         myLastTrade = price;
+        mustSellZone = resistanceZone(price);
     }
 
     function soldAt(price)
     {
         myLastTrade = -price;
+        mustSellZone = 0;
     }
 
     function logCurrentData()
@@ -85,5 +88,16 @@ module.exports = function (RISK, FEE)
             lowestResistanceZone: lowestResistanceZone,
             myLastTrade: myLastTrade
         };
+    }
+
+    /* Private */
+    function supportZone(price)
+    {
+        return price - (price * riskCoeficient)
+    }
+
+    function resistanceZone(price)
+    {
+        return price + (price * riskCoeficient)
     }
 };
