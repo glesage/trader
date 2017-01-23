@@ -42,7 +42,7 @@ function checkBuySell(lastTradePrice)
             price: lastTradePrice,
             timestamp: Date.now(),
             type: 'buy',
-            volume: 1
+            amount: 1
         }).catch(console.log);
         trader.boughtAt(lastTradePrice);
     }
@@ -53,7 +53,7 @@ function checkBuySell(lastTradePrice)
             price: lastTradePrice,
             timestamp: Date.now(),
             type: 'sell',
-            volume: 1
+            amount: 1
         }).catch(console.log);
         trader.soldAt(lastTradePrice);
     }
