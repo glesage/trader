@@ -11,6 +11,14 @@ var trader = new Trader(parseFloat(process.env.RISK), parseFloat(process.env.FEE
 var db = new DB(process.env.MONGO_URL);
 
 
+var data = {
+    balanceUSD: 10000,
+    balanceBTC: 0,
+    lastBuyAt: 0,
+    lastSellAt: 0
+};
+
+
 /**
  * Bitfinex socket listeners
  */
@@ -20,42 +28,59 @@ bws.on('open', function ()
 });
 bws.on('trade', function (pair, trade)
 {
-    db.recordTrade(trade).catch(console.log);
-    sheet.recordAllTrade(trade).catch(console.log);
-
-    var tradeData = trader.inboundTrade(trade);
-    db.recordTraderData(tradeData).catch(console.log);
-
+    recordTrade(trade);
     checkBuySell(trade.price);
 });
 bws.on('error', console.error);
 
+
+/**
+ * Record any incomming trades and alert the trader
+ */
+function recordTrade(trade)
+{
+    trader.inboundTrade(trade);
+    db.recordTrade(trade).catch(console.log);
+    sheet.recordAllTrade(trade).catch(console.log);
+}
+
+
 /**
  * Check the trader to find out if we should buy or sell
  */
-function checkBuySell(lastTradePrice)
+function checkBuySell(currentTicker)
 {
-    if (trader.timeToBuy(lastTradePrice))
+    if (data.balanceBTC > 0 && data.lastBuyAt > 0)
     {
+        if (!trader.timeToSell(currentTicker, data.lastBuyAt)) return;
+
         sheet.recordMyTrade(
         {
-            price: lastTradePrice,
             timestamp: Date.now(),
-            type: 'buy',
-            amount: 1
-        }).catch(console.log);
-        trader.boughtAt(lastTradePrice);
-    }
-    else if (trader.timeToSell(lastTradePrice))
-    {
-        sheet.recordMyTrade(
-        {
-            price: lastTradePrice,
-            timestamp: Date.now(),
+            ticker: currentTicker,
             type: 'sell',
-            amount: 1
+            amountUSD: data.balanceBTC * currentTicker,
+            amountBTC: data.balanceBTC
         }).catch(console.log);
-        trader.soldAt(lastTradePrice);
+
+        data.balanceBTC = 0;
+        data.balanceUSD = data.balanceBTC * currentTicker;
+    }
+    else if (data.balanceUSD > 0 && data.lastSellAt > 0)
+    {
+        if (!trader.timeToBuy(currentTicker)) return;
+
+        sheet.recordMyTrade(
+        {
+            timestamp: Date.now(),
+            ticker: currentTicker,
+            type: 'buy',
+            amountUSD: data.balanceUSD,
+            amountBTC: data.balanceUSD / currentTicker
+        }).catch(console.log);
+
+        data.balanceBTC = data.balanceUSD / currentTicker;
+        data.balanceUSD = 0;
     }
 }
 
@@ -65,6 +90,7 @@ function checkBuySell(lastTradePrice)
  */
 setInterval(function ()
 {
-    var data = trader.logCurrentData();
-    if (data) sheet.recordTraderData(data).catch(console.log);
+    data.timestamp = Date.now();
+    data.supportZone = trader.highestSupportZone;
+    sheet.recordTraderData(data).catch(console.log);
 }, 30000);
