@@ -50,7 +50,7 @@ function recordTrade(trade)
  */
 function checkBuySell(currentTicker)
 {
-    if (data.balanceBTC > 0 && data.lastBuyAt > 0)
+    if (data.balanceBTC > 0)
     {
         if (!trader.timeToSell(currentTicker, data.lastBuyAt)) return;
 
@@ -66,7 +66,7 @@ function checkBuySell(currentTicker)
         data.balanceBTC = 0;
         data.balanceUSD = data.balanceBTC * currentTicker;
     }
-    else if (data.balanceUSD > 0 && data.lastSellAt > 0)
+    else if (data.balanceUSD > 0)
     {
         if (!trader.timeToBuy(currentTicker)) return;
 
