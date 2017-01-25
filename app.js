@@ -49,21 +49,24 @@ function checkBuySell(currentTicker)
     {
         if (!trader.timeToSell(currentTicker, data.lastBuyAt)) return;
 
+        data.balanceBTC = 0;
+        data.balanceUSD = data.balanceBTC * currentTicker;
+
         sheet.recordMyTrade(
         {
             timestamp: Date.now(),
             ticker: currentTicker,
             type: 'sell',
-            amountUSD: data.balanceBTC * currentTicker,
+            amountUSD: data.balanceUSD,
             amountBTC: data.balanceBTC
         }).catch(console.log);
-
-        data.balanceBTC = 0;
-        data.balanceUSD = data.balanceBTC * currentTicker;
     }
     else if (data.balanceUSD > 0)
     {
         if (!trader.timeToBuy(currentTicker)) return;
+
+        data.balanceBTC = data.balanceUSD / currentTicker;
+        data.balanceUSD = 0;
 
         sheet.recordMyTrade(
         {
@@ -71,11 +74,8 @@ function checkBuySell(currentTicker)
             ticker: currentTicker,
             type: 'buy',
             amountUSD: data.balanceUSD,
-            amountBTC: data.balanceUSD / currentTicker
+            amountBTC: data.balanceBTC
         }).catch(console.log);
-
-        data.balanceBTC = data.balanceUSD / currentTicker;
-        data.balanceUSD = 0;
     }
 }
 
