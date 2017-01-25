@@ -5,7 +5,11 @@ var Trader = require('./lib/trader');
 var DB = require('./lib/db');
 
 
-var sheet = new TradeSheet(process.env.DRIVE_SHEET, process.env.DRIVE_CREDS);
+var sheet = new TradeSheet(
+    process.env.DRIVE_SHEET,
+    process.env.DRIVE_CREDS,
+    process.env.SUFFIX
+);
 var bws = new BitfinexWS(process.env.BIT_KEY, process.env.BIT_SECRET).ws;
 var trader = new Trader(parseFloat(process.env.RISK), parseFloat(process.env.FEE));
 var db = new DB(process.env.MONGO_URL);
