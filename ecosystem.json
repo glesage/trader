@@ -22,7 +22,7 @@
             "ref": "origin/master",
             "repo": "git@github.com:glesage/trader.git",
             "path": "/root/trader/mid",
-            "post-deploy": "source /root/.trader_vars_mid && npm install && pm2 startOrRestart ecosystem.json"
+            "post-deploy": "source /root/.trader_vars && npm install && pm2 startOrRestart ecosystem.json"
         },
         "low":
         {
