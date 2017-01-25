@@ -6,14 +6,32 @@
     }],
     "deploy":
     {
-        "prod":
+        "high":
         {
             "user": "root",
             "host": "45.55.146.25",
             "ref": "origin/master",
             "repo": "git@github.com:glesage/trader.git",
-            "path": "/root/trader",
-            "post-deploy": "source /root/.trader_vars && npm install && pm2 startOrRestart ecosystem.json"
+            "path": "/root/trader/high",
+            "post-deploy": "source /root/.trader_vars_high && npm install && pm2 startOrRestart ecosystem.json"
+        },
+        "mid":
+        {
+            "user": "root",
+            "host": "45.55.146.25",
+            "ref": "origin/master",
+            "repo": "git@github.com:glesage/trader.git",
+            "path": "/root/trader/mid",
+            "post-deploy": "source /root/.trader_vars_mid && npm install && pm2 startOrRestart ecosystem.json"
+        },
+        "low":
+        {
+            "user": "root",
+            "host": "45.55.146.25",
+            "ref": "origin/master",
+            "repo": "git@github.com:glesage/trader.git",
+            "path": "/root/trader/low",
+            "post-deploy": "source /root/.trader_vars_low && npm install && pm2 startOrRestart ecosystem.json"
         }
     }
 }
