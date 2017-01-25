@@ -19,12 +19,16 @@ var data = {
 };
 
 
+restoreData();
+
+
 /**
  * Bitfinex socket listeners
  */
 bws.on('open', function ()
 {
     bws.subscribeTrades('BTCUSD');
+    startTracking();
 });
 bws.on('trade', function (pair, trade)
 {
@@ -41,7 +45,6 @@ function recordTrade(trade)
 {
     trader.inboundTrade(trade);
     db.recordTrade(trade).catch(console.log);
-    sheet.recordAllTrade(trade).catch(console.log);
 }
 
 
@@ -88,9 +91,33 @@ function checkBuySell(currentTicker)
  * Every 30 seconds log in drive what the trader is thinking
  * for debugging purposes for now
  */
-setInterval(function ()
+function startTracking()
 {
-    data.timestamp = Date.now();
-    data.supportZone = trader.highestSupportZone;
-    sheet.recordTraderData(data).catch(console.log);
-}, 30000);
+    setInterval(function ()
+    {
+        var currentData = JSON.parse(JSON.stringify(data));
+        currentData.timestamp = Date.now();
+        currentData.supportZone = trader.highestSupportZone;
+
+        db.recordTraderData(currentData).catch(console.log);
+        sheet.recordTraderData(currentData).catch(console.log);
+    }, 30000);
+}
+
+/**
+ * Utility to restore the session data using backup in MongoDB
+ */
+function restoreData()
+{
+    db.getLastTraderData(null, ['timestamp'], 1).then(function (traderData)
+    {
+        if (!traderData) return;
+
+        data.balanceUSD = parseFloat(traderData.balanceUSD) || 0;
+        data.balanceBTC = parseFloat(traderData.balanceUSD) || 0;
+        data.lastBuyAt = parseFloat(traderData.lastBuyAt) || 0;
+        data.lastSellAt = parseFloat(traderData.lastSellAt) || 0;
+        trader.highestSupportZone = parseFloat(traderData.supportZone) || 0;
+
+    });
+}
