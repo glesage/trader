@@ -1,7 +1,7 @@
 {
     "apps": [
     {
-        "name": "Trader",
+        "name": "Trader" + "-" + process.env.SUFFIX,
         "script": "app.js"
     }],
     "deploy":
