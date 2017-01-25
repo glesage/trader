@@ -18,9 +18,7 @@ var data = {
     lastSellAt: 0
 };
 
-
 restoreData();
-
 
 /**
  * Bitfinex socket listeners
@@ -32,20 +30,10 @@ bws.on('open', function ()
 });
 bws.on('trade', function (pair, trade)
 {
-    recordTrade(trade);
+    trader.inboundTrade(trade);
     checkBuySell(trade.price);
 });
 bws.on('error', console.error);
-
-
-/**
- * Record any incomming trades and alert the trader
- */
-function recordTrade(trade)
-{
-    trader.inboundTrade(trade);
-    db.recordTrade(trade).catch(console.log);
-}
 
 
 /**
