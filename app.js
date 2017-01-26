@@ -52,6 +52,9 @@ function checkBuySell(currentTicker)
         data.balanceBTC = 0;
         data.balanceUSD = data.balanceBTC * currentTicker;
 
+        data.lastBuyAt = 0;
+        data.lastSellAt = currentTicker;
+
         sheet.recordMyTrade(
         {
             timestamp: Date.now(),
@@ -67,6 +70,9 @@ function checkBuySell(currentTicker)
 
         data.balanceBTC = data.balanceUSD / currentTicker;
         data.balanceUSD = 0;
+
+        data.lastSellAt = 0;
+        data.lastBuyAt = currentTicker;
 
         sheet.recordMyTrade(
         {
@@ -93,7 +99,7 @@ function startTracking()
 
         db.recordTraderData(currentData).catch(console.log);
         sheet.recordTraderData(currentData).catch(console.log);
-    }, 30000);
+    }, 60000);
 }
 
 /**
