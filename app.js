@@ -112,7 +112,7 @@ function restoreData()
         if (!traderData) return;
 
         data.balanceUSD = parseFloat(traderData.balanceUSD) || 0;
-        data.balanceBTC = parseFloat(traderData.balanceUSD) || 0;
+        data.balanceBTC = parseFloat(traderData.balanceBTC) || 0;
         data.lastBuyAt = parseFloat(traderData.lastBuyAt) || 0;
         data.lastSellAt = parseFloat(traderData.lastSellAt) || 0;
         trader.highestSupportZone = parseFloat(traderData.supportZone) || 0;
