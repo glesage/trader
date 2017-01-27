@@ -60,7 +60,7 @@ function checkBuySell(currentTicker)
 
         sheet.recordMyTrade(
         {
-            time: moment().format('mm/dd hh:mm:ss'),
+            time: moment().format('MM/DD HH:mm:ss'),
             ticker: currentTicker,
             type: 'sell',
             amountUSD: data.balanceUSD,
@@ -79,7 +79,7 @@ function checkBuySell(currentTicker)
 
         sheet.recordMyTrade(
         {
-            time: moment().format('MM/DD hh:mm:ss'),
+            time: moment().format('MM/DD HH:mm:ss'),
             ticker: currentTicker,
             type: 'buy',
             amountUSD: data.balanceUSD,
@@ -103,7 +103,7 @@ function startTracking()
         db.recordTraderData(currentData).catch(console.log);
 
         var resistanceZone = trader.lowestResistanceZone(data.lastBuyAt);
-        currentData.time = moment().format('MM/DD hh:mm:ss');
+        currentData.time = moment().format('MM/DD HH:mm:ss');
         currentData.resistanceZone = resistanceZone;
         sheet.recordTraderData(currentData).catch(console.log);
     }, 120000);
