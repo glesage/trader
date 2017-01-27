@@ -2,6 +2,7 @@
 var BitfinexWS = require('bitfinex-api-node');
 var TradeSheet = require('./lib/sheet');
 var Trader = require('./lib/trader');
+var moment = require('moment');
 var DB = require('./lib/db');
 
 
@@ -57,7 +58,7 @@ function checkBuySell(currentTicker)
 
         sheet.recordMyTrade(
         {
-            timestamp: Date.now(),
+            time: moment().format('mm/dd hh:mm:ss'),
             ticker: currentTicker,
             type: 'sell',
             amountUSD: data.balanceUSD,
@@ -76,7 +77,7 @@ function checkBuySell(currentTicker)
 
         sheet.recordMyTrade(
         {
-            timestamp: Date.now(),
+            time: moment().format('MM/DD hh:mm:ss'),
             ticker: currentTicker,
             type: 'buy',
             amountUSD: data.balanceUSD,
@@ -86,7 +87,7 @@ function checkBuySell(currentTicker)
 }
 
 /**
- * Every 30 seconds log in drive what the trader is thinking
+ * Every 120 seconds log what the trader is thinking
  * for debugging purposes for now
  */
 function startTracking()
@@ -98,8 +99,12 @@ function startTracking()
         currentData.supportZone = trader.highestSupportZone;
 
         db.recordTraderData(currentData).catch(console.log);
+
+        var resistanceZone = trader.lowestResistanceZone(data.lastBuyAt);
+        currentData.time = moment().format('MM/DD hh:mm:ss');
+        currentData.resistanceZone = resistanceZone;
         sheet.recordTraderData(currentData).catch(console.log);
-    }, 60000);
+    }, 120000);
 }
 
 /**
@@ -115,7 +120,7 @@ function restoreData()
         data.balanceBTC = parseFloat(traderData.balanceBTC) || 0;
         data.lastBuyAt = parseFloat(traderData.lastBuyAt) || 0;
         data.lastSellAt = parseFloat(traderData.lastSellAt) || 0;
-        trader.highestSupportZone = parseFloat(traderData.supportZone) || 0;
 
+        trader.highestSupportZone = parseFloat(traderData.supportZone) || 0;
     });
 }
