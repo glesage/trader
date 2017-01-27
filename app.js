@@ -50,6 +50,8 @@ function checkBuySell(currentTicker)
     {
         if (!trader.timeToSell(currentTicker, data.lastBuyAt)) return;
 
+        trader.highestSupportZone = 0
+
         data.balanceUSD = data.balanceBTC * currentTicker;
         data.balanceBTC = 0;
 
