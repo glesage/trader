@@ -108,7 +108,9 @@ function checkBuySell(currentTicker)
 
         trader.highestSupportZone = 0;
 
-        data.balanceUSD = (data.balanceBTC * currentTicker) * (1 - fee);
+        var fee = trader.sellFee(data.balanceUSD);
+
+        data.balanceUSD = (data.balanceBTC * currentTicker) - fee;
         data.balanceBTC = 0;
 
         sheet.recordMyTrade(
@@ -116,6 +118,7 @@ function checkBuySell(currentTicker)
             time: moment().format('MM/DD HH:mm:ss'),
             ticker: currentTicker,
             type: 'sell',
+            fee: fee,
             amountUSD: data.balanceUSD,
             amountBTC: data.balanceBTC
         }).catch(function (err)
@@ -129,7 +132,9 @@ function checkBuySell(currentTicker)
         if (data.lastSell && data.lastSell.is_live) return;
         if (!trader.timeToBuy(currentTicker)) return;
 
-        data.balanceBTC = (data.balanceUSD / currentTicker) * (1 - fee);
+        var fee = trader.buyFee(data.balanceUSD);
+
+        data.balanceBTC = (data.balanceUSD / currentTicker) - fee;
         data.balanceUSD = 0;
 
         sheet.recordMyTrade(
@@ -137,6 +142,7 @@ function checkBuySell(currentTicker)
             time: moment().format('MM/DD HH:mm:ss'),
             ticker: currentTicker,
             type: 'buy',
+            fee: fee,
             amountUSD: data.balanceUSD,
             amountBTC: data.balanceBTC
         }).catch(function (err)
