@@ -6,13 +6,16 @@ var moment = require('moment');
 var DB = require('./lib/db');
 
 
+var fee = parseFloat(process.env.FEE);
+var risk = parseFloat(process.env.RISK);
+
 var sheet = new TradeSheet(
     process.env.DRIVE_SHEET,
     process.env.DRIVE_CREDS,
     process.env.SUFFIX
 );
 var bws = new BitfinexWS(process.env.BIT_KEY, process.env.BIT_SECRET).ws;
-var trader = new Trader(parseFloat(process.env.RISK), parseFloat(process.env.FEE));
+var trader = new Trader(risk, fee);
 var db = new DB(process.env.MONGO_URL);
 
 
@@ -52,7 +55,7 @@ function checkBuySell(currentTicker)
 
         trader.highestSupportZone = 0
 
-        data.balanceUSD = data.balanceBTC * currentTicker;
+        data.balanceUSD = (data.balanceBTC * currentTicker) * (1 - fee);
         data.balanceBTC = 0;
 
         data.lastSellAt = currentTicker;
@@ -71,7 +74,7 @@ function checkBuySell(currentTicker)
     {
         if (!trader.timeToBuy(currentTicker)) return;
 
-        data.balanceBTC = data.balanceUSD / currentTicker;
+        data.balanceBTC = (data.balanceUSD / currentTicker) * (1 - fee);
         data.balanceUSD = 0;
 
         data.lastBuyAt = currentTicker;
