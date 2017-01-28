@@ -58,7 +58,7 @@ bws.on('open', function ()
             try
             {
                 var sz = parseFloat(traderData.highestSupportZone);
-                if (sz !== NaN && sz > 0) trader.highestSupportZone = sz;
+                if (!isNaN(sz) && sz > 0) trader.highestSupportZone = sz;
             }
             catch (e)
             {}
@@ -163,7 +163,7 @@ function logCurrentUpdates()
     if (trader.highestSupportZone)
     {
         var sz = parseFloat(trader.highestSupportZone);
-        if (sz !== NaN && sz > 0) currentData.supportZone = sz;
+        if (!isNaN(sz) && sz > 0) currentData.supportZone = sz;
     }
 
     currentData.resistanceZone = 0;
