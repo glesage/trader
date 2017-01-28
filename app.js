@@ -101,6 +101,8 @@ bws.on('error', console.error);
  */
 function checkBuySell(currentTicker)
 {
+    var fee;
+
     if (data.balanceBTC > 0)
     {
         if (data.lastBuy && data.lastBuy.is_live) return;
@@ -108,7 +110,7 @@ function checkBuySell(currentTicker)
 
         trader.highestSupportZone = 0;
 
-        var fee = trader.sellFee(data.balanceUSD);
+        fee = trader.sellFee(data.balanceUSD);
 
         data.balanceUSD = (data.balanceBTC * currentTicker) - fee;
         data.balanceBTC = 0;
@@ -132,7 +134,7 @@ function checkBuySell(currentTicker)
         if (data.lastSell && data.lastSell.is_live) return;
         if (!trader.timeToBuy(currentTicker)) return;
 
-        var fee = trader.buyFee(data.balanceUSD);
+        fee = trader.buyFee(data.balanceUSD);
 
         data.balanceBTC = (data.balanceUSD / currentTicker) - fee;
         data.balanceUSD = 0;
