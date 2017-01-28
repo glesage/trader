@@ -39,8 +39,7 @@ var data = {
     balanceUSD: 0,
     balanceBTC: 0,
     lastBuy: null,
-    lastSell: null,
-    loggedOnce: false
+    lastSell: null
 };
 
 
@@ -152,8 +151,8 @@ function checkBuySell(currentTicker)
  * Every 120 seconds log what the trader is thinking
  * for debugging purposes for now
  */
-var lastResistanceZone = 0;
-var lastSupportZone = 0;
+var lastResistanceZone = -1;
+var lastSupportZone = -1;
 
 function logCurrentUpdates()
 {
@@ -172,9 +171,8 @@ function logCurrentUpdates()
         currentData.resistanceZone = trader.lowestResistanceZone(data.lastBuy.price);
     }
 
-    if (data.loggedOnce &&
-        (currentData.resistanceZone === lastResistanceZone &&
-            currentData.supportZone === lastSupportZone)) return;
+    if (currentData.resistanceZone === lastResistanceZone &&
+        currentData.supportZone === lastSupportZone) return;
 
     data.loggedOnce = true;
 
