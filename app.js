@@ -182,8 +182,6 @@ function logCurrentUpdates()
     if (currentData.resistanceZone === lastResistanceZone &&
         currentData.supportZone === lastSupportZone) return;
 
-    data.loggedOnce = true;
-
     delete currentData.lastBuy;
     delete currentData.lastSell;
 
