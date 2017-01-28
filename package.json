@@ -4,9 +4,8 @@
     "main": "app.js",
     "dependencies":
     {
-        "bitfinex-api-node": "0",
+        "bitfinex-api-node": "git+https://github.com/glesage/bitfinex-api-node.git",
         "google-sheets-node-api": "0.3",
-        "mongodb": "2.2",
         "moment": "2.17"
     },
     "scripts":
