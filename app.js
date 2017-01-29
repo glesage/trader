@@ -136,7 +136,7 @@ function checkShouldBuy(currentTicker)
 
     // If you're already currently making an order, exit
     // basically a thread lock
-    if (makingOrder) return
+    if (makingOrder) return;
 
     makingOrder = true;
     var newOrder = trader.buyOrder(currentTicker, data.balanceUSD);
