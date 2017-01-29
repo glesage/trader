@@ -33,7 +33,6 @@ var data = {
 var minTradeBTC = 0.01;
 var makingOrder = false;
 
-
 boot.init(bitfinex, sheet, function (accountData, traderData, feesData)
 {
     if (accountData) data = accountData;
