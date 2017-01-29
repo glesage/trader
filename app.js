@@ -23,15 +23,11 @@ var rest = new BitfinexWS(process.env.BIT_REST_KEY, process.env.BIT_REST_SECRET)
 /**
  * Instanciate Trader Mastermind
  */
-var risks = {
-    max: parseFloat(process.env.MAX_RISK),
-    min: parseFloat(process.env.MIN_RISK)
-};
 var fees = {
     maker: 0.001,
     taker: 0.002
 };
-var trader = new Trader(risks, fees);
+var trader = new Trader(fees);
 
 
 /**
