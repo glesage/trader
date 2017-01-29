@@ -1,33 +1,24 @@
 /* Dependencies */
-var BitfinexWS = require('bitfinex-api-node');
 var moment = require('moment');
 
 var Sheet = require('./lib/sheet');
 var Trader = require('./lib/trader');
 var Boot = require('./lib/boot');
 var Order = require('./lib/order');
+var Bitfinex = require('./lib/bitfinex');
 
 
 /**
- * Instanciate sheets for recording & bitfinex interfaces
- */
-var boot = new Boot();
-var sheet = new Sheet(
-    process.env.DRIVE_SHEET,
-    process.env.DRIVE_CREDS
-);
-var bws = new BitfinexWS(process.env.BIT_WS_KEY, process.env.BIT_WS_SECRET).ws;
-var rest = new BitfinexWS(process.env.BIT_REST_KEY, process.env.BIT_REST_SECRET).rest;
-
-
-/**
- * Instanciate Trader Mastermind
+ * Instanciate helpers
  */
 var fees = {
     maker: 0.001,
     taker: 0.002
 };
+var boot = new Boot();
 var trader = new Trader(fees);
+var bitfinex = new Bitfinex(logTradePrices, logOrderUpdate);
+var sheet = new Sheet(process.env.DRIVE_SHEET, process.env.DRIVE_CREDS);
 
 
 /**
@@ -44,45 +35,38 @@ var updatingBalances = false;
 var makingOrder = false;
 
 
+boot.init(bitfinex.rest, sheet, function (accountData, traderData, feesData)
+{
+    if (accountData) data = accountData;
+    if (feesData) fees = feesData;
+    if (traderData && traderData.highestSupportZone > 0)
+    {
+        try
+        {
+            var sz = parseFloat(traderData.highestSupportZone);
+            if (!isNaN(sz) && sz > 0) trader.highestSupportZone = sz;
+        }
+        catch (e)
+        {}
+    }
+
+    if (!updatingBalances) checkShouldSell(data.lastBuy);
+
+    bitfinex.start();
+});
+
 /**
  * Bitfinex socket listeners
  */
-bws.on('open', function ()
+function logTradePrices(tradePrice)
 {
-    boot.init(rest, sheet, function (accountData, traderData, feesData)
-    {
-        if (accountData) data = accountData;
-        if (feesData) fees = feesData;
-        if (traderData && traderData.highestSupportZone > 0)
-        {
-            try
-            {
-                var sz = parseFloat(traderData.highestSupportZone);
-                if (!isNaN(sz) && sz > 0) trader.highestSupportZone = sz;
-            }
-            catch (e)
-            {}
-        }
-
-        if (!updatingBalances) checkShouldSell(data.lastBuy);
-
-        bws.subscribeTrades('BTCUSD');
-        bws.auth();
-    });
-});
-bws.on('trade', function (pair, trade)
-{
-    var tradePrice = parseFloat(trade.price);
     trader.inboundTrade(tradePrice);
     checkShouldBuy(tradePrice);
     logCurrentUpdates();
-});
-bws.on('ts', function (trade)
+}
+
+function logOrderUpdate(order)
 {
-    if (!trade || !trade.length || updatingBalances) return;
-
-    var order = new Order.fromSocket(trade);
-
     if (data.lastBuy && order.id === data.lastBuy.id)
     {
         if (order.status !== 'EXECUTED') return;
@@ -104,8 +88,7 @@ bws.on('ts', function (trade)
     else return;
 
     checkShouldSell(data.lastBuy);
-});
-bws.on('error', console.error);
+}
 
 
 /**
