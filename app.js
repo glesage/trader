@@ -1,10 +1,9 @@
 /* Dependencies */
-var moment = require('moment');
-
 var Sheet = require('./lib/sheet');
 var Trader = require('./lib/trader');
 var Boot = require('./lib/boot');
 var Order = require('./lib/order');
+var Logger = require('./lib/logger');
 var Bitfinex = require('./lib/bitfinex');
 
 
@@ -18,6 +17,7 @@ var fees = {
 var boot = new Boot();
 var sheet = new Sheet();
 var trader = new Trader(fees);
+var logger = new Logger(trader, sheet);
 var bitfinex = new Bitfinex(logTradePrices, logOrderUpdate);
 
 
@@ -40,27 +40,18 @@ boot.init(bitfinex, sheet, function (accountData, traderData, feesData)
     if (feesData) fees = feesData;
     if (traderData && traderData.highestSupportZone > 0)
     {
-        try
-        {
-            var sz = parseFloat(traderData.highestSupportZone);
-            if (!isNaN(sz) && sz > 0) trader.highestSupportZone = sz;
-        }
-        catch (e)
-        {}
+        trader.highestSupportZone = traderData.highestSupportZone;
     }
 
     checkShouldSell(data.lastBuy);
     bitfinex.start();
 });
 
-/**
- * Bitfinex socket listeners
- */
 function logTradePrices(tradePrice)
 {
     trader.inboundTrade(tradePrice);
     checkShouldBuy(tradePrice);
-    logCurrentUpdates();
+    logger.traderData(data);
 }
 
 function logOrderUpdate(order)
@@ -71,7 +62,7 @@ function logOrderUpdate(order)
         if (data.lastBuy.status === 'ACTIVE')
         {
             data.lastBuy = order;
-            logOrder(order);
+            logger.orderUpdate(order);
         }
     }
     else if (data.lastSell && order.id === data.lastSell.id)
@@ -80,7 +71,7 @@ function logOrderUpdate(order)
         if (data.lastSell.status === 'ACTIVE')
         {
             data.lastSell = order;
-            logOrder(order);
+            logger.orderUpdate(order);
         }
     }
     else return;
@@ -141,48 +132,6 @@ function checkShouldBuy(currentTicker)
 }
 
 /**
- * Utility to log what the trader is thinking
- * for debugging purposes for now
- */
-var lastResistanceZone = -1;
-var lastSupportZone = -1;
-
-function logCurrentUpdates()
-{
-    var currentData = JSON.parse(JSON.stringify(data));
-
-    currentData.supportZone = 0;
-    if (trader.highestSupportZone)
-    {
-        var sz = parseFloat(trader.highestSupportZone);
-        if (!isNaN(sz) && sz > 0) currentData.supportZone = sz;
-    }
-
-    currentData.resistanceZone = 0;
-    if (data.lastBuy)
-    {
-        currentData.resistanceZone = trader.resistanceZone(data.lastBuy.price);
-    }
-
-    if (currentData.resistanceZone === lastResistanceZone &&
-        currentData.supportZone === lastSupportZone) return;
-
-    delete currentData.lastBuy;
-    delete currentData.lastSell;
-
-    lastResistanceZone = currentData.resistanceZone;
-    lastSupportZone = currentData.supportZone;
-
-    currentData.time = moment().format('MM/DD HH:mm:ss');
-
-    sheet.recordTraderData(currentData).catch(function (err)
-    {
-        console.log("Could not record trader data");
-        console.log(err);
-    });
-}
-
-/**
  * Utility to check whether there is an active order
  */
 function hasActiveOrder()
@@ -211,21 +160,7 @@ function madeOrderCallback(err, res)
     data.balanceUSD = 0;
 
     // Log to active order to google sheets
-    logOrder(new Order.fromRestA(res));
-}
-
-/**
- * Utility to log an order/trade to google sheets
- */
-function logOrder(order)
-{
-    var prettyOrder = order.sheetsFormat();
-    if (!prettyOrder) return;
-    sheet.recordMyTrade(prettyOrder).catch(function (err)
-    {
-        console.log("Could not record order to drive sheets");
-        console.log(err);
-    });
+    logger.orderUpdate(new Order.fromRestA(res));
 }
 
 /**
