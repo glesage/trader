@@ -16,9 +16,9 @@ var fees = {
     taker: 0.002
 };
 var boot = new Boot();
+var sheet = new Sheet();
 var trader = new Trader(fees);
 var bitfinex = new Bitfinex(logTradePrices, logOrderUpdate);
-var sheet = new Sheet(process.env.DRIVE_SHEET, process.env.DRIVE_CREDS);
 
 
 /**
