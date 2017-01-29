@@ -31,7 +31,6 @@ var data = {
     lastSell: null
 };
 var minTradeBTC = 0.01;
-var updatingBalances = false;
 var makingOrder = false;
 
 
@@ -50,8 +49,7 @@ boot.init(bitfinex, sheet, function (accountData, traderData, feesData)
         {}
     }
 
-    if (!updatingBalances) checkShouldSell(data.lastBuy);
-
+    checkShouldSell(data.lastBuy);
     bitfinex.start();
 });
 
@@ -115,14 +113,7 @@ function checkShouldSell(lastBuy)
 
         var sellPrice = trader.resistanceZone(data.lastBuy.price);
         var orderData = trader.sellOrder(sellPrice, data.balanceBTC);
-        bitfinex.rest.new_order(
-            orderData.symbol,
-            orderData.amount,
-            orderData.price,
-            orderData.exchange,
-            orderData.side,
-            orderData.type,
-            madeOrderCallback);
+        bitfinex.placeOrder(orderData, madeOrderCallback);
     });
 }
 
@@ -146,14 +137,7 @@ function checkShouldBuy(currentTicker)
 
     makingOrder = true;
     var orderData = trader.buyOrder(currentTicker, data.balanceUSD);
-    bitfinex.rest.new_order(
-        orderData.symbol,
-        orderData.amount,
-        orderData.price,
-        orderData.exchange,
-        orderData.side,
-        orderData.type,
-        madeOrderCallback);
+    bitfinex.placeOrder(orderData, madeOrderCallback);
 }
 
 /**
