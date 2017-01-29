@@ -68,6 +68,8 @@ bws.on('open', function ()
             {}
         }
 
+        checkShouldSell();
+
         bws.subscribeTrades('BTCUSD');
         bws.auth();
     });
@@ -105,13 +107,7 @@ bws.on('ts', function (trade)
     }
     else return;
 
-    if (data.lastBuy && data.lastBuy.status === 'EXECUTED' && data.balanceBTC > 0)
-    {
-        updateBalances(function ()
-        {
-            checkShouldBuy(trader.resistanceZone(data.lastBuy.price));
-        });
-    }
+    checkShouldSell();
 });
 bws.on('error', console.error);
 
@@ -119,6 +115,17 @@ bws.on('error', console.error);
 /**
  * Check the trader to find out if we should buy or sell
  */
+function checkShouldSell()
+{
+    if (data.lastBuy && data.lastBuy.status === 'EXECUTED' && data.balanceBTC > 0)
+    {
+        updateBalances(function ()
+        {
+            checkShouldBuy(trader.resistanceZone(data.lastBuy.price));
+        });
+    }
+}
+
 function checkShouldBuy(currentTicker)
 {
     // If there i already an active order, exit
