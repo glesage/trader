@@ -46,7 +46,6 @@ var data = {
 var minTradeBTC = 0.01;
 var updatingBalances = false;
 var makingOrder = false;
-var dateFormat = 'MM/DD HH:mm:ss';
 
 
 /**
@@ -198,7 +197,7 @@ function logCurrentUpdates()
     lastResistanceZone = currentData.resistanceZone;
     lastSupportZone = currentData.supportZone;
 
-    currentData.time = moment().format(dateFormat);
+    currentData.time = moment().format('MM/DD HH:mm:ss');
 
     sheet.recordTraderData(currentData).catch(function (err)
     {
