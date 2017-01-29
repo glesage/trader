@@ -76,7 +76,7 @@ bws.on('trade', function (pair, trade)
 {
     var tradePrice = parseFloat(trade.price);
     trader.inboundTrade(tradePrice);
-    checkBuySell(tradePrice);
+    checkShouldBuy(tradePrice);
     logCurrentUpdates();
 });
 bws.on('ts', function (trade)
@@ -109,7 +109,7 @@ bws.on('ts', function (trade)
     {
         updateBalances(function ()
         {
-            checkBuySell(trader.resistanceZone(data.lastBuy.price));
+            checkShouldBuy(trader.resistanceZone(data.lastBuy.price));
         });
     }
 });
@@ -119,49 +119,50 @@ bws.on('error', console.error);
 /**
  * Check the trader to find out if we should buy or sell
  */
-function checkBuySell(currentTicker)
+function checkShouldBuy(currentTicker)
 {
-    var newOrder;
-    if (data.balanceBTC > minTradeBTC && data.lastBuy)
-    {
-        if (data.lastBuy.is_live === true) return;
-        if (!trader.timeToSell(currentTicker, data.lastBuy.price)) return;
-        newOrder = trader.sellOrder(currentTicker, data.balanceBTC);
-    }
-    else if (data.balanceUSD > 0 && data.balanceUSD > (minTradeBTC * currentTicker))
-    {
-        if (data.lastSell && data.lastSell.is_live === true) return;
-        if (!trader.timeToBuy(currentTicker)) return;
-        newOrder = trader.buyOrder(currentTicker, data.balanceUSD);
-    }
+    // If there i already an active order, exit
+    if (data.lastBuy && data.lastBuy.status === 'ACTIVE') return;
+    if (data.lastSell && data.lastSell.status === 'ACTIVE') return;
 
-    if (newOrder && !makingOrder)
-    {
-        makingOrder = true;
-        rest.new_order(
-            newOrder.symbol,
-            newOrder.amount,
-            newOrder.price,
-            newOrder.exchange,
-            newOrder.side,
-            newOrder.type,
-            function (err, res)
+    // If you don't have any USD in wallet, exit
+    if (data.balanceUSD === 0) return;
+
+    // If you don't have enough USD to meet the min order amount on bitfinex, exit
+    if (data.balanceUSD < (minTradeBTC * currentTicker)) return;
+
+    // If it's not the time to buy according to the trader, exit
+    if (!trader.timeToBuy(currentTicker)) return;
+
+    // If you're already currently making an order, exit
+    // basically a thread lock
+    if (makingOrder) return
+
+    makingOrder = true;
+    var newOrder = trader.buyOrder(currentTicker, data.balanceUSD);
+    rest.new_order(
+        newOrder.symbol,
+        newOrder.amount,
+        newOrder.price,
+        newOrder.exchange,
+        newOrder.side,
+        newOrder.type,
+        function (err, res)
+        {
+            makingOrder = false;
+            if (err)
             {
-                makingOrder = false;
-                if (err)
-                {
-                    console.log("Could not place order");
-                    return console.log(err);
-                }
+                console.log("Could not place order");
+                return console.log(err);
+            }
 
-                var order = new Order.fromRestA(res);
+            // Set all balances to 0 since the current order is active
+            data.balanceBTC = 0;
+            data.balanceUSD = 0;
 
-                data.balanceBTC = 0;
-                data.balanceUSD = 0;
-
-                logOrder(order);
-            });
-    }
+            // Log to active order to google sheets
+            logOrder(new Order.fromRestA(res));
+        });
 }
 
 /**
