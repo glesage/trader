@@ -68,7 +68,7 @@ bws.on('open', function ()
             {}
         }
 
-        checkShouldSell();
+        if (!updatingBalances) checkShouldSell(data.lastBuy);
 
         bws.subscribeTrades('BTCUSD');
         bws.auth();
@@ -107,7 +107,7 @@ bws.on('ts', function (trade)
     }
     else return;
 
-    checkShouldSell();
+    checkShouldSell(data.lastBuy);
 });
 bws.on('error', console.error);
 
@@ -115,22 +115,42 @@ bws.on('error', console.error);
 /**
  * Check the trader to find out if we should buy or sell
  */
-function checkShouldSell()
+function checkShouldSell(lastBuy)
 {
-    if (data.lastBuy && data.lastBuy.status === 'EXECUTED' && data.balanceBTC > 0)
+    // If there is already an active order, exit
+    if (hasActiveOrder()) return;
+
+    updateBalances(function ()
     {
-        updateBalances(function ()
-        {
-            checkShouldBuy(trader.resistanceZone(data.lastBuy.price));
-        });
-    }
+        // If you don't have any BTC in wallet, exit
+        if (data.balanceBTC === 0) return;
+
+        // If you don't have enough BTC to meet the min order amount on bitfinex, exit
+        if (data.balanceBTC < minTradeBTC) return;
+
+        // If you're already currently making an order, exit
+        // basically a thread lock
+        if (makingOrder) return;
+
+        makingOrder = true;
+
+        var sellPrice = trader.resistanceZone(data.lastBuy.price);
+        var orderData = trader.sellOrder(sellPrice, data.balanceBTC);
+        rest.new_order(
+            orderData.symbol,
+            orderData.amount,
+            orderData.price,
+            orderData.exchange,
+            orderData.side,
+            orderData.type,
+            madeOrderCallback);
+    });
 }
 
 function checkShouldBuy(currentTicker)
 {
     // If there i already an active order, exit
-    if (data.lastBuy && data.lastBuy.status === 'ACTIVE') return;
-    if (data.lastSell && data.lastSell.status === 'ACTIVE') return;
+    if (hasActiveOrder()) return;
 
     // If you don't have any USD in wallet, exit
     if (data.balanceUSD === 0) return;
@@ -146,30 +166,15 @@ function checkShouldBuy(currentTicker)
     if (makingOrder) return;
 
     makingOrder = true;
-    var newOrder = trader.buyOrder(currentTicker, data.balanceUSD);
+    var orderData = trader.buyOrder(currentTicker, data.balanceUSD);
     rest.new_order(
-        newOrder.symbol,
-        newOrder.amount,
-        newOrder.price,
-        newOrder.exchange,
-        newOrder.side,
-        newOrder.type,
-        function (err, res)
-        {
-            makingOrder = false;
-            if (err)
-            {
-                console.log("Could not place order");
-                return console.log(err);
-            }
-
-            // Set all balances to 0 since the current order is active
-            data.balanceBTC = 0;
-            data.balanceUSD = 0;
-
-            // Log to active order to google sheets
-            logOrder(new Order.fromRestA(res));
-        });
+        orderData.symbol,
+        orderData.amount,
+        orderData.price,
+        orderData.exchange,
+        orderData.side,
+        orderData.type,
+        madeOrderCallback);
 }
 
 /**
@@ -215,11 +220,44 @@ function logCurrentUpdates()
 }
 
 /**
+ * Utility to check whether there is an active order
+ */
+function hasActiveOrder()
+{
+    // If there i already an active order, exit
+    if (data.lastBuy && data.lastBuy.status === 'ACTIVE') return true;
+    if (data.lastSell && data.lastSell.status === 'ACTIVE') return true;
+
+    return false;
+}
+
+/**
+ * Callback to handle new order creation
+ */
+function madeOrderCallback(err, res)
+{
+    makingOrder = false;
+    if (err)
+    {
+        console.log("Could not place order");
+        return console.log(err);
+    }
+
+    // Set all balances to 0 since the current order is active
+    data.balanceBTC = 0;
+    data.balanceUSD = 0;
+
+    // Log to active order to google sheets
+    logOrder(new Order.fromRestA(res));
+}
+
+/**
  * Utility to log an order/trade to google sheets
  */
 function logOrder(order)
 {
     var prettyOrder = order.sheetsFormat();
+    if (!prettyOrder) return;
     sheet.recordMyTrade(prettyOrder).catch(function (err)
     {
         console.log("Could not record order to drive sheets");
