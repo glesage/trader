@@ -89,12 +89,20 @@ bws.on('ts', function (trade)
     if (data.lastBuy && order.id === data.lastBuy.id)
     {
         if (order.status !== 'EXECUTED') return;
-        if (data.lastBuy.status === 'ACTIVE') data.lastBuy = order;
+        if (data.lastBuy.status === 'ACTIVE')
+        {
+            data.lastBuy = order;
+            logOrder(order);
+        }
     }
     else if (data.lastSell && order.id === data.lastSell.id)
     {
         if (order.status !== 'EXECUTED') return;
-        if (data.lastSell.status === 'ACTIVE') data.lastSell = order;
+        if (data.lastSell.status === 'ACTIVE')
+        {
+            data.lastSell = order;
+            logOrder(order);
+        }
     }
     else return;
 
