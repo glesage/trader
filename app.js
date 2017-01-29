@@ -35,7 +35,7 @@ var updatingBalances = false;
 var makingOrder = false;
 
 
-boot.init(bitfinex.rest, sheet, function (accountData, traderData, feesData)
+boot.init(bitfinex, sheet, function (accountData, traderData, feesData)
 {
     if (accountData) data = accountData;
     if (feesData) fees = feesData;
@@ -115,7 +115,7 @@ function checkShouldSell(lastBuy)
 
         var sellPrice = trader.resistanceZone(data.lastBuy.price);
         var orderData = trader.sellOrder(sellPrice, data.balanceBTC);
-        rest.new_order(
+        bitfinex.rest.new_order(
             orderData.symbol,
             orderData.amount,
             orderData.price,
@@ -146,7 +146,7 @@ function checkShouldBuy(currentTicker)
 
     makingOrder = true;
     var orderData = trader.buyOrder(currentTicker, data.balanceUSD);
-    rest.new_order(
+    bitfinex.rest.new_order(
         orderData.symbol,
         orderData.amount,
         orderData.price,
@@ -249,35 +249,13 @@ function logOrder(order)
  */
 function updateBalances(callback)
 {
-    updatingBalances = true;
-    rest.wallet_balances(function (err, res)
+    bitfinex.getUpdatedBalances(function (balances)
     {
-        if (err || !res || !res.length)
+        if (balances)
         {
-            updatingBalances = false;
-            return callback();
+            data.balanceBTC = balances.balanceBTC;
+            data.balanceUSD = balances.balanceUSD;
         }
-
-        var btcBalance = res.find(function (b)
-        {
-            return b.currency === "btc";
-        });
-        var usdBalance = res.find(function (b)
-        {
-            return b.currency === "usd";
-        });
-        try
-        {
-            if (btcBalance) data.balanceBTC = parseFloat(btcBalance.available);
-            if (usdBalance) data.balanceUSD = parseFloat(usdBalance.available);
-        }
-        catch (e)
-        {
-            console.log("Error parsing balances");
-            console.log(e);
-        }
-
-        updatingBalances = false;
-        return callback();
+        callback();
     });
 }
