@@ -18,7 +18,7 @@ var boot = new Boot();
 var sheet = new Sheet();
 var trader = new Trader(fees);
 var logger = new Logger(trader, sheet);
-var bitfinex = new Bitfinex(logTradePrices, logOrderUpdate);
+var bitfinex = new Bitfinex(gotTradePrices, gotOrderUpdate);
 
 
 /**
@@ -47,14 +47,14 @@ boot.init(bitfinex, sheet, function (accountData, traderData, feesData)
     bitfinex.start();
 });
 
-function logTradePrices(tradePrice)
+function gotTradePrices(tradePrice)
 {
     trader.inboundTrade(tradePrice);
     checkShouldBuy(tradePrice);
     logger.traderData(data);
 }
 
-function logOrderUpdate(order)
+function gotOrderUpdate(order)
 {
     if (data.lastBuy && order.id === data.lastBuy.id)
     {
