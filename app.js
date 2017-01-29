@@ -1,9 +1,11 @@
 /* Dependencies */
 var BitfinexWS = require('bitfinex-api-node');
+var moment = require('moment');
+
 var Sheet = require('./lib/sheet');
 var Trader = require('./lib/trader');
 var Boot = require('./lib/boot');
-var moment = require('moment');
+var Order = require('./lib/order');
 
 
 /**
@@ -14,7 +16,7 @@ var sheet = new Sheet(
     process.env.DRIVE_SHEET,
     process.env.DRIVE_CREDS
 );
-var bws = new BitfinexWS(process.env.BIT_WS_KEY, process.env.BIT_WS_SECRET, 2).ws;
+var bws = new BitfinexWS(process.env.BIT_WS_KEY, process.env.BIT_WS_SECRET).ws;
 var rest = new BitfinexWS(process.env.BIT_REST_KEY, process.env.BIT_REST_SECRET).rest;
 
 
@@ -41,6 +43,10 @@ var data = {
     lastBuy: null,
     lastSell: null
 };
+var minTradeBTC = 0.01;
+var updatingBalances = false;
+var makingOrder = false;
+var dateFormat = 'MM/DD HH:mm:ss';
 
 
 /**
@@ -64,34 +70,41 @@ bws.on('open', function ()
         }
 
         bws.subscribeTrades('BTCUSD');
-        // bws.auth();
+        bws.auth();
     });
 });
 bws.on('trade', function (pair, trade)
 {
-    trader.inboundTrade(trade);
-    checkBuySell(trade.price);
+    var tradePrice = parseFloat(trade.price);
+    trader.inboundTrade(tradePrice);
+    checkBuySell(tradePrice);
     logCurrentUpdates();
 });
-bws.on('os', function (data)
+bws.on('ts', function (trade)
 {
-    if (!data || !data.length) return;
+    if (!trade || !trade.length || updatingBalances) return;
 
-    var order = {
-        id: data[0],
-        timestamp: data[4],
-        side: data[16] > 0 ? 'buy' : 'sell',
-        remaining_amount: data[6],
-        original_amount: data[7],
-        status: data[13], //  ACTIVE, EXECUTED, PARTIALLY FILLED, CANCELED
-        price: data[16],
-    };
+    var order = new Order.fromSocket(trade);
 
-    if (order.side === 'buy') data.lastBuy = order;
-    if (order.side === 'sell') data.lastSell = order;
+    if (data.lastBuy && order.id === data.lastBuy.id)
+    {
+        if (order.status !== 'EXECUTED') return;
+        if (data.lastBuy.status === 'ACTIVE') data.lastBuy = order;
+    }
+    else if (data.lastSell && order.id === data.lastSell.id)
+    {
+        if (order.status !== 'EXECUTED') return;
+        if (data.lastSell.status === 'ACTIVE') data.lastSell = order;
+    }
+    else return;
 
-    console.log("order");
-    console.log(order);
+    if (data.lastBuy && data.lastBuy.status === 'EXECUTED' && data.balanceBTC > 0)
+    {
+        updateBalances(function ()
+        {
+            checkBuySell(trader.resistanceZone(data.lastBuy.price));
+        });
+    }
 });
 bws.on('error', console.error);
 
@@ -101,62 +114,51 @@ bws.on('error', console.error);
  */
 function checkBuySell(currentTicker)
 {
-    var fee;
-
-    if (data.balanceBTC > 0)
+    var newOrder;
+    if (data.balanceBTC > minTradeBTC && data.lastBuy)
     {
-        if (data.lastBuy && data.lastBuy.is_live) return;
+        if (data.lastBuy.is_live === true) return;
         if (!trader.timeToSell(currentTicker, data.lastBuy.price)) return;
-
-        trader.highestSupportZone = 0;
-
-        fee = trader.sellFee(data.balanceUSD);
-
-        data.balanceUSD = (data.balanceBTC * currentTicker) - fee;
-        data.balanceBTC = 0;
-
-        sheet.recordMyTrade(
-        {
-            time: moment().format('MM/DD HH:mm:ss'),
-            ticker: currentTicker,
-            type: 'sell',
-            fee: fee,
-            amountUSD: data.balanceUSD,
-            amountBTC: data.balanceBTC
-        }).catch(function (err)
-        {
-            console.log("Could not record sell trade");
-            console.log(err);
-        });
+        newOrder = trader.sellOrder(currentTicker, data.balanceBTC);
     }
-    else if (data.balanceUSD > 0)
+    else if (data.balanceUSD > 0 && data.balanceUSD > (minTradeBTC * currentTicker))
     {
-        if (data.lastSell && data.lastSell.is_live) return;
+        if (data.lastSell && data.lastSell.is_live === true) return;
         if (!trader.timeToBuy(currentTicker)) return;
+        newOrder = trader.buyOrder(currentTicker, data.balanceUSD);
+    }
 
-        fee = trader.buyFee(data.balanceUSD);
+    if (newOrder && !makingOrder)
+    {
+        makingOrder = true;
+        rest.new_order(
+            newOrder.symbol,
+            newOrder.amount,
+            newOrder.price,
+            newOrder.exchange,
+            newOrder.side,
+            newOrder.type,
+            function (err, res)
+            {
+                makingOrder = false;
+                if (err)
+                {
+                    console.log("Could not place order");
+                    return console.log(err);
+                }
 
-        data.balanceBTC = (data.balanceUSD / currentTicker) - fee;
-        data.balanceUSD = 0;
+                var order = new Order.fromRestA(res);
 
-        sheet.recordMyTrade(
-        {
-            time: moment().format('MM/DD HH:mm:ss'),
-            ticker: currentTicker,
-            type: 'buy',
-            fee: fee,
-            amountUSD: data.balanceUSD,
-            amountBTC: data.balanceBTC
-        }).catch(function (err)
-        {
-            console.log("Could not record buy trade");
-            console.log(err);
-        });
+                data.balanceBTC = 0;
+                data.balanceUSD = 0;
+
+                logOrder(order);
+            });
     }
 }
 
 /**
- * Every 120 seconds log what the trader is thinking
+ * Utility to log what the trader is thinking
  * for debugging purposes for now
  */
 var lastResistanceZone = -1;
@@ -176,7 +178,7 @@ function logCurrentUpdates()
     currentData.resistanceZone = 0;
     if (data.lastBuy)
     {
-        currentData.resistanceZone = trader.lowestResistanceZone(data.lastBuy.price);
+        currentData.resistanceZone = trader.resistanceZone(data.lastBuy.price);
     }
 
     if (currentData.resistanceZone === lastResistanceZone &&
@@ -188,11 +190,62 @@ function logCurrentUpdates()
     lastResistanceZone = currentData.resistanceZone;
     lastSupportZone = currentData.supportZone;
 
-    currentData.time = moment().format('MM/DD HH:mm:ss');
+    currentData.time = moment().format(dateFormat);
 
     sheet.recordTraderData(currentData).catch(function (err)
     {
         console.log("Could not record trader data");
         console.log(err);
+    });
+}
+
+/**
+ * Utility to log an order/trade to google sheets
+ */
+function logOrder(order)
+{
+    var prettyOrder = order.sheetsFormat();
+    sheet.recordMyTrade(prettyOrder).catch(function (err)
+    {
+        console.log("Could not record order to drive sheets");
+        console.log(err);
+    });
+}
+
+/**
+ * Utility to get wallet balances
+ */
+function updateBalances(callback)
+{
+    updatingBalances = true;
+    rest.wallet_balances(function (err, res)
+    {
+        if (err || !res || !res.length)
+        {
+            updatingBalances = false;
+            return callback();
+        }
+
+        var btcBalance = res.find(function (b)
+        {
+            return b.currency === "btc";
+        });
+        var usdBalance = res.find(function (b)
+        {
+            return b.currency === "usd";
+        });
+        try
+        {
+            if (btcBalance) data.balanceBTC = parseFloat(btcBalance.available);
+            if (usdBalance) data.balanceUSD = parseFloat(usdBalance.available);
+        }
+        catch (e)
+        {
+            console.log("Error parsing balances");
+            console.log(e);
+        }
+
+        updatingBalances = false;
+        return callback();
     });
 }
