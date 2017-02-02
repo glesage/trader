@@ -175,7 +175,7 @@ function logActiveOrders()
 function madeOrderCallback(err, res)
 {
     makingOrder = false;
-    if (err)
+    if (err || !res)
     {
         console.log("Could not place order");
         return console.log(err);
@@ -185,8 +185,14 @@ function madeOrderCallback(err, res)
     data.balanceBTC = 0;
     data.balanceUSD = 0;
 
+    var order = new Order.fromRestA(res);
+
+    // Record to active order
+    if (order.type === 'buy') data.lastBuy = order;
+    if (order.type === 'sell') data.lastSell = order;
+
     // Log to active order to google sheets
-    logger.orderUpdate(new Order.fromRestA(res));
+    logger.orderUpdate(order);
 }
 
 /**
