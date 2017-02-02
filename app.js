@@ -177,6 +177,7 @@ function madeOrderCallback(err, res)
     makingOrder = false;
     if (err || !res)
     {
+        reset();
         console.log("Could not place order");
         return console.log(err);
     }
@@ -207,6 +208,17 @@ function updateBalances(callback)
             data.balanceBTC = balances.balanceBTC;
             data.balanceUSD = balances.balanceUSD;
         }
-        callback();
+        if (callback) callback();
     });
+}
+
+
+/**
+ * Utility to reset data when there is a failure
+ */
+function reset()
+{
+    data.lastBuy = null;
+    data.lastSell = null;
+    updateBalances();
 }
