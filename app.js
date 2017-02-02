@@ -129,7 +129,7 @@ function checkShouldUpdate(currentTicker)
 
     // If the new ticker is lower than the last buy time, exit
     var newPrice = trader.supportZone(currentTicker);
-    if (newPrice < data.lastBuy.price) return;
+    if (newPrice.toFixed(2) < data.lastBuy.price.toFixed(2)) return;
 
     // If you're already currently making an order, exit
     // basically a thread lock
