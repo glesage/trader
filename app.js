@@ -33,24 +33,21 @@ var data = {
 var minTradeBTC = 0.01;
 var makingOrder = false;
 
-boot.init(bitfinex, sheet, function (accountData, traderData, feesData)
+boot.init(bitfinex, function (accountData, feesData)
 {
     if (accountData) data = accountData;
     if (feesData) fees = feesData;
-    if (traderData && traderData.highestSupportZone > 0)
-    {
-        trader.highestSupportZone = traderData.highestSupportZone;
-    }
 
-    checkShouldSell(data.lastBuy);
+    logActiveOrders();
+
     bitfinex.start();
 });
 
 function gotTradePrices(tradePrice)
 {
-    trader.inboundTrade(tradePrice);
+    checkShouldUpdate(tradePrice);
     checkShouldBuy(tradePrice);
-    logger.traderData(data);
+    checkShouldSell();
 }
 
 function gotOrderUpdate(order)
@@ -73,16 +70,13 @@ function gotOrderUpdate(order)
             logger.orderUpdate(order);
         }
     }
-    else return;
-
-    checkShouldSell(data.lastBuy);
 }
 
 
 /**
  * Check the trader to find out if we should buy or sell
  */
-function checkShouldSell(lastBuy)
+function checkShouldSell()
 {
     // If there is already an active order, exit
     if (hasActiveOrder()) return;
@@ -101,7 +95,7 @@ function checkShouldSell(lastBuy)
 
         makingOrder = true;
 
-        var sellPrice = trader.resistanceZone(data.lastBuy.price);
+        var sellPrice = trader.currentResistanceZone;
         var orderData = trader.sellOrder(sellPrice, data.balanceBTC);
         bitfinex.placeOrder(orderData, madeOrderCallback);
     });
@@ -109,7 +103,7 @@ function checkShouldSell(lastBuy)
 
 function checkShouldBuy(currentTicker)
 {
-    // If there i already an active order, exit
+    // If there is already an active order, exit
     if (hasActiveOrder()) return;
 
     // If you don't have any USD in wallet, exit
@@ -118,16 +112,32 @@ function checkShouldBuy(currentTicker)
     // If you don't have enough USD to meet the min order amount on bitfinex, exit
     if (data.balanceUSD < (minTradeBTC * currentTicker)) return;
 
-    // If it's not the time to buy according to the trader, exit
-    if (!trader.timeToBuy(currentTicker)) return;
-
     // If you're already currently making an order, exit
     // basically a thread lock
     if (makingOrder) return;
 
     makingOrder = true;
     var orderData = trader.buyOrder(currentTicker, data.balanceUSD);
+    trader.currentResistanceZone = trader.resistanceZone(orderData.price);
     bitfinex.placeOrder(orderData, madeOrderCallback);
+}
+
+function checkShouldUpdate(currentTicker)
+{
+    // If there is no active buy order, exit
+    if (!data.lastBuy || data.lastBuy.status !== 'ACTIVE') return;
+
+    // If the new ticker is lower than the last buy time, exit
+    var newPrice = trader.supportZone(currentTicker);
+    if (newPrice < data.lastBuy.price) return;
+
+    // If you're already currently making an order, exit
+    // basically a thread lock
+    if (makingOrder) return;
+
+    makingOrder = true;
+    trader.currentResistanceZone = trader.resistanceZone(newPrice);
+    bitfinex.updateOrder(data.lastBuy, newPrice, madeOrderCallback);
 }
 
 /**
@@ -140,6 +150,23 @@ function hasActiveOrder()
     if (data.lastSell && data.lastSell.status === 'ACTIVE') return true;
 
     return false;
+}
+
+/**
+ * Utility to log active orders
+ */
+function logActiveOrders()
+{
+    if (!hasActiveOrder()) return;
+
+    if (data.lastBuy && data.lastBuy.status === 'ACTIVE')
+    {
+        logger.orderUpdate(data.lastBuy);
+    }
+    else if (data.lastSell && data.lastSell.status === 'ACTIVE')
+    {
+        logger.orderUpdate(data.lastSell);
+    }
 }
 
 /**
