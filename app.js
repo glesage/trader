@@ -131,7 +131,7 @@ function checkShouldBuy(currentTicker)
 function checkShouldUpdate(currentTicker)
 {
     // If there is no active buy order, exit
-    if (!data.lastBuy || data.lastBuy.status !== 'ACTIVE') return;
+    if (!data.lastBuy || !data.lastBuy.id || data.lastBuy.status !== 'ACTIVE') return;
 
     // If you're already currently making an order, exit
     // basically a thread lock
@@ -139,11 +139,18 @@ function checkShouldUpdate(currentTicker)
 
     // If the new ticker is lower than the last buy time, exit
     var newPrice = trader.supportZone(currentTicker);
-    if (newPrice < data.lastBuy.price) return;
+    if (newPrice <= data.lastBuy.price) return;
 
     makingOrder = true;
-    trader.currentResistanceZone = trader.resistanceZone(newPrice);
-    bitfinex.updateOrder(data.lastBuy, newPrice, madeOrderCallback);
+    var oldBalance = (data.lastBuy.price * data.lastBuy.amount).toFixed(8);
+
+    var orderData = trader.buyOrder(currentTicker, oldBalance);
+    var newBalance = (orderData.price * orderData.amount).toFixed(8);
+
+    if (newBalance > oldBalance) return;
+
+    trader.currentResistanceZone = trader.resistanceZone(currentTicker);
+    bitfinex.replaceOrder(data.lastBuy.id, orderData, madeOrderCallback);
 }
 
 /**
