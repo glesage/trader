@@ -5,7 +5,7 @@ var Boot = require('./lib/boot');
 var Order = require('./lib/order');
 var Logger = require('./lib/logger');
 var Bitfinex = require('./lib/bitfinex');
-
+var btfnxPrice = require('./lib/utilities').btfnxPrice;
 
 /**
  * Instanciate helpers
@@ -96,6 +96,11 @@ function checkShouldSell()
         makingOrder = true;
 
         var sellPrice = trader.currentResistanceZone;
+        if (!sellPrice || sellPrice < 0)
+        {
+            trader.currentResistanceZone = trader.resistanceZone(data.lastBuy.price);
+            sellPrice = trader.currentResistanceZone;
+        }
         var orderData = trader.sellOrder(sellPrice, data.balanceBTC);
         bitfinex.placeOrder(orderData, madeOrderCallback);
     });
@@ -110,14 +115,15 @@ function checkShouldBuy(currentTicker)
     if (data.balanceUSD === 0) return;
 
     // If you don't have enough USD to meet the min order amount on bitfinex, exit
-    if (data.balanceUSD < (minTradeBTC * currentTicker)) return;
+    var currentPrice = btfnxPrice(currentTicker);
+    if (data.balanceUSD < (minTradeBTC * currentPrice)) return;
 
     // If you're already currently making an order, exit
     // basically a thread lock
     if (makingOrder) return;
 
     makingOrder = true;
-    var orderData = trader.buyOrder(currentTicker, data.balanceUSD);
+    var orderData = trader.buyOrder(currentPrice, data.balanceUSD);
     trader.currentResistanceZone = trader.resistanceZone(orderData.price);
     bitfinex.placeOrder(orderData, madeOrderCallback);
 }
@@ -127,13 +133,13 @@ function checkShouldUpdate(currentTicker)
     // If there is no active buy order, exit
     if (!data.lastBuy || data.lastBuy.status !== 'ACTIVE') return;
 
-    // If the new ticker is lower than the last buy time, exit
-    var newPrice = trader.supportZone(currentTicker).toFixed(2);
-    if (newPrice < data.lastBuy.price) return;
-
     // If you're already currently making an order, exit
     // basically a thread lock
     if (makingOrder) return;
+
+    // If the new ticker is lower than the last buy time, exit
+    var newPrice = trader.supportZone(currentTicker);
+    if (newPrice < data.lastBuy.price) return;
 
     makingOrder = true;
     trader.currentResistanceZone = trader.resistanceZone(newPrice);
@@ -178,7 +184,7 @@ function madeOrderCallback(err, res)
     if (err || !res)
     {
         reset();
-        console.log("Could not place order");
+        console.log("Could not perform trade or update");
         return console.log(err);
     }
 
@@ -186,7 +192,8 @@ function madeOrderCallback(err, res)
     data.balanceBTC = 0;
     data.balanceUSD = 0;
 
-    var order = new Order.fromRestA(res);
+    var order = res;
+    if (!(res instanceof Order)) order = new Order.fromRestA(order);
 
     // Record to active order
     if (order.type === 'buy') data.lastBuy = order;
