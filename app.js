@@ -28,20 +28,12 @@ var data = {
     balanceUSD: 0,
     balanceBTC: 0,
     lastBuy: null,
-    lastSell: null
+    lastSell: null,
+    activeBuy: null,
+    activeSell: null
 };
 var minTradeBTC = 0.01;
 var makingOrder = false;
-
-boot.init(bitfinex, function (accountData, feesData)
-{
-    if (accountData) data = accountData;
-    if (feesData) fees = feesData;
-
-    logActiveOrders();
-
-    bitfinex.start();
-});
 
 function gotTradePrices(tradePrice)
 {
@@ -52,26 +44,24 @@ function gotTradePrices(tradePrice)
 
 function gotOrderUpdate(order)
 {
-    if (data.lastBuy && order.id === data.lastBuy.id)
+    if (order.status === 'EXECUTED')
     {
-        if (order.status !== 'EXECUTED') return;
-        if (data.lastBuy.status === 'ACTIVE')
+        // If the order was our active buy that has been executed, record that
+        if (data.activeBuy && order.id === data.activeBuy.id)
         {
             data.lastBuy = order;
+            data.activeBuy = null;
             logger.orderUpdate(order);
         }
-    }
-    else if (data.lastSell && order.id === data.lastSell.id)
-    {
-        if (order.status !== 'EXECUTED') return;
-        if (data.lastSell.status === 'ACTIVE')
+        // If the order was our active sell that has been executed, record that
+        else if (data.activeSell && order.id === data.activeSell.id)
         {
             data.lastSell = order;
+            data.activeSell = null;
             logger.orderUpdate(order);
         }
     }
 }
-
 
 /**
  * Check the trader to find out if we should buy or sell
@@ -81,29 +71,26 @@ function checkShouldSell()
     // If there is already an active order, exit
     if (hasActiveOrder()) return;
 
-    updateBalances(function ()
+    // If you don't have any BTC in wallet, exit
+    if (data.balanceBTC === 0) return;
+
+    // If you don't have enough BTC to meet the min order amount on bitfinex, exit
+    if (data.balanceBTC < minTradeBTC) return;
+
+    // If you're already currently making an order, exit
+    // basically a thread lock
+    if (makingOrder) return;
+
+    makingOrder = true;
+
+    var sellPrice = trader.currentResistanceZone;
+    if (!sellPrice || sellPrice < 0)
     {
-        // If you don't have any BTC in wallet, exit
-        if (data.balanceBTC === 0) return;
-
-        // If you don't have enough BTC to meet the min order amount on bitfinex, exit
-        if (data.balanceBTC < minTradeBTC) return;
-
-        // If you're already currently making an order, exit
-        // basically a thread lock
-        if (makingOrder) return;
-
-        makingOrder = true;
-
-        var sellPrice = trader.currentResistanceZone;
-        if (!sellPrice || sellPrice < 0)
-        {
-            trader.currentResistanceZone = trader.resistanceZone(data.lastBuy.price);
-            sellPrice = trader.currentResistanceZone;
-        }
-        var orderData = trader.sellOrder(sellPrice, data.balanceBTC);
-        bitfinex.placeOrder(orderData, madeOrderCallback);
-    });
+        trader.currentResistanceZone = trader.resistanceZone(data.lastBuy.price);
+        sellPrice = trader.currentResistanceZone;
+    }
+    var orderData = trader.sellOrder(sellPrice, data.balanceBTC);
+    bitfinex.placeOrder(orderData, madeOrderCallback);
 }
 
 function checkShouldBuy(currentTicker)
@@ -131,7 +118,7 @@ function checkShouldBuy(currentTicker)
 function checkShouldUpdate(currentTicker)
 {
     // If there is no active buy order, exit
-    if (!data.lastBuy || !data.lastBuy.id || data.lastBuy.status !== 'ACTIVE') return;
+    if (!data.activeBuy || !data.activeBuy.id) return;
 
     // If you're already currently making an order, exit
     // basically a thread lock
@@ -139,10 +126,10 @@ function checkShouldUpdate(currentTicker)
 
     // If the new ticker is lower than the last buy time, exit
     var newPrice = trader.supportZone(currentTicker);
-    if (newPrice <= data.lastBuy.price) return;
+    if (newPrice <= data.activeBuy.price) return;
 
     makingOrder = true;
-    var oldBalance = (data.lastBuy.price * data.lastBuy.amount).toFixed(8);
+    var oldBalance = (data.activeBuy.price * data.activeBuy.amount).toFixed(8);
 
     var orderData = trader.buyOrder(currentTicker, oldBalance);
     var newBalance = (orderData.price * orderData.amount).toFixed(8);
@@ -150,7 +137,7 @@ function checkShouldUpdate(currentTicker)
     if (newBalance > oldBalance) return;
 
     trader.currentResistanceZone = trader.resistanceZone(currentTicker);
-    bitfinex.replaceOrder(data.lastBuy.id, orderData, madeOrderCallback);
+    bitfinex.replaceOrder(data.activeBuy.id, orderData, madeOrderCallback);
 }
 
 /**
@@ -158,28 +145,7 @@ function checkShouldUpdate(currentTicker)
  */
 function hasActiveOrder()
 {
-    // If there i already an active order, exit
-    if (data.lastBuy && data.lastBuy.status === 'ACTIVE') return true;
-    if (data.lastSell && data.lastSell.status === 'ACTIVE') return true;
-
-    return false;
-}
-
-/**
- * Utility to log active orders
- */
-function logActiveOrders()
-{
-    if (!hasActiveOrder()) return;
-
-    if (data.lastBuy && data.lastBuy.status === 'ACTIVE')
-    {
-        logger.orderUpdate(data.lastBuy);
-    }
-    else if (data.lastSell && data.lastSell.status === 'ACTIVE')
-    {
-        logger.orderUpdate(data.lastSell);
-    }
+    return data.activeBuy && data.activeSell;
 }
 
 /**
@@ -187,7 +153,6 @@ function logActiveOrders()
  */
 function madeOrderCallback(err, res)
 {
-    makingOrder = false;
     if (err || !res)
     {
         reset();
@@ -195,16 +160,14 @@ function madeOrderCallback(err, res)
         return console.log(err);
     }
 
-    // Set all balances to 0 since the current order is active
-    data.balanceBTC = 0;
-    data.balanceUSD = 0;
+    makingOrder = false;
 
     var order = res;
     if (!(res instanceof Order)) order = new Order.fromRestA(order);
 
     // Record to active order
-    if (order.type === 'buy') data.lastBuy = order;
-    if (order.type === 'sell') data.lastSell = order;
+    if (order.type === 'buy') data.activeBuy = order;
+    if (order.type === 'sell') data.activeSell = order;
 
     // Log to active order to google sheets
     logger.orderUpdate(order);
@@ -232,7 +195,15 @@ function updateBalances(callback)
  */
 function reset()
 {
-    data.lastBuy = null;
-    data.lastSell = null;
-    updateBalances();
+    boot.init(bitfinex, function (accountData, feesData)
+    {
+        if (accountData) data = accountData;
+        if (feesData) fees = feesData;
+
+        if (!bitfinex.started) bitfinex.start();
+
+        makingOrder = false;
+    });
 }
+
+reset();
