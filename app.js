@@ -29,17 +29,31 @@ var data = {
 };
 var makingOrder = false;
 
+// A timer to wait for the initial bitfinex data to come in
+// because for some reason it sends historical data when you first
+// open the socket connection
+var gotInitialRushOfData = false;
+var initialRushTimer = 1000; // 1 second in ms
+
 
 boot.init(bitfinex, function (accountData, feesData)
 {
     data = accountData;
-    trader = new Trader(feesData, placeOrder, replaceOrder);
+    trader = new Trader(feesData, placeOrder);
     bitfinex.start();
+
+    setInterval(function ()
+    {
+        gotInitialRushOfData = true;
+    }, initialRushTimer);
+
+    logStuff();
 });
 
 
 function gotTradePrices(tradePrice)
 {
+    if (!gotInitialRushOfData) return;
     trader.gotCurrentTicker(tradePrice, data);
 }
 
@@ -47,6 +61,9 @@ function gotOrderUpdate(order)
 {
     updateBalances(function ()
     {
+        // Ignore fee orders
+        if (order.status.indexOf('@') > -1) return;
+
         if (order.status === 'EXECUTED')
         {
             if (order.type === 'buy')
@@ -79,39 +96,23 @@ function placeOrder(order)
 {
     if (makingOrder || !order) return;
     makingOrder = true;
-    bitfinex.placeOrder(order, madeOrderCallback);
-}
-
-function replaceOrder(orderId, order)
-{
-    if (makingOrder || !orderId || !order) return;
-    makingOrder = true;
-    bitfinex.replaceOrder(orderId, order, madeOrderCallback);
-}
-
-/**
- * Callback to handle new order creation
- */
-function madeOrderCallback(err, res)
-{
-    makingOrder = false;
-
-    if (err || !res)
+    bitfinex.placeOrder(order, function (err, res)
     {
-        console.log("Could not perform trade or update");
-        console.log(err);
-        return;
-    }
+        makingOrder = false;
+        if (err || !res)
+        {
+            console.log("Could not perform trade or update");
+            console.log(err);
+            return;
+        }
 
-    var order = res;
-    if (!(res instanceof Order)) order = new Order.fromRestA(order);
+        var newOrder = res;
+        if (!(res instanceof Order)) newOrder = new Order.fromRestA(newOrder);
 
-    // Record to active order
-    if (order.type === 'buy') data.activeBuy = order;
-    else if (order.type === 'sell') data.activeSell = order;
-
-    // Log to active order to google sheets
-    logger.orderUpdate(order);
+        // Record to active order
+        if (newOrder.type === 'buy') data.activeBuy = newOrder;
+        else if (newOrder.type === 'sell') data.activeSell = newOrder;
+    });
 }
 
 /**
@@ -128,4 +129,20 @@ function updateBalances(callback)
         }
         if (callback) callback();
     });
+}
+
+/**
+ * Every 60 seconds log in drive what the trader is thinking
+ * for debugging purposes for now
+ */
+function logStuff()
+{
+    setInterval(function ()
+    {
+        var data = trader.activeData;
+        data.lastTicker = trader.lastTicker;
+        data.currentSupportZone = trader.highestSupportZone;
+        data.currentResistanceZone = trader.lowestResistanceZone;
+        sheet.recordTraderData(data).catch(console.log);
+    }, 60000);
 }
