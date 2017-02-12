@@ -13,7 +13,7 @@ var trader;
 var boot = new Boot();
 var sheet = new Sheet();
 var logger = new Logger(trader, sheet);
-var bitfinex = new Bitfinex(gotTradePrices, gotOrderUpdate);
+var bitfinex = new Bitfinex(gotTrade, gotOrderUpdate);
 
 
 /**
@@ -50,11 +50,10 @@ boot.init(bitfinex, function (accountData, feesData)
     logStuff();
 });
 
-
-function gotTradePrices(tradePrice)
+function gotTrade(trade)
 {
     if (!gotInitialRushOfData) return;
-    trader.gotCurrentTicker(tradePrice, data);
+    trader.gotTrade(trade, data);
 }
 
 function gotOrderUpdate(order)
@@ -141,7 +140,7 @@ function logStuff()
     {
         var logData = Object.assign({}, data, trader.activeData);
 
-        logData.lastTicker = trader.lastTicker;
+        logData.average = trader.currentAverage;
         logData.currentSupportZone = trader.highestSupportZone;
         logData.currentResistanceZone = trader.lowestResistanceZone;
 
