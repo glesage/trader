@@ -139,10 +139,12 @@ function logStuff()
 {
     setInterval(function ()
     {
-        var data = trader.activeData;
-        data.lastTicker = trader.lastTicker;
-        data.currentSupportZone = trader.highestSupportZone;
-        data.currentResistanceZone = trader.lowestResistanceZone;
-        sheet.recordTraderData(data).catch(console.log);
+        var logData = Object.assign({}, data, trader.activeData);
+
+        logData.lastTicker = trader.lastTicker;
+        logData.currentSupportZone = trader.highestSupportZone;
+        logData.currentResistanceZone = trader.lowestResistanceZone;
+
+        sheet.recordTraderData(logData).catch(console.log);
     }, 60000);
 }
