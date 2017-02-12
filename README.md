@@ -19,5 +19,10 @@ export BIT_WS_SECRET="" // Bitfinex API SECRET for websocket connection
 export BIT_REST_KEY="" // Bitfinex API KEY for rets connection
 export BIT_REST_SECRET="" // Bitfinex API SECRET for rest connection
 
-export RISK=0.002 // Difference of price to trade at
+export RISK=0.0001
+export MAX_WAIT=300000
+export MAX_LOSS=0.01
+
+export ALLOW_BUY=1
+export ALLOW_SELL=1
 ```
