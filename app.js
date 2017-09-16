@@ -13,15 +13,14 @@ const bitOptions = {
     socket_secret: process.env.BIT_WS_SECRET
 };
 
-// /**
-//  * Instanciate helpers
-//  */
+/**
+ * Instanciate helpers
+ */
 let trader;
 const boot = new Boot();
 const sheet = new Sheet();
 const logger = new Logger(trader, sheet);
 const bitfinex = new Bitfinex(bitOptions, gotTrade, gotOrderUpdate);
-
 
 /**
  * Main datastructure recording state
@@ -34,7 +33,7 @@ let data = {
     activeBuy: null,
     activeSell: null
 };
-const makingOrder = false;
+let makingOrder = false;
 
 boot.init(bitfinex, function (accountData, feesData)
 {
@@ -96,17 +95,18 @@ function placeOrder(order)
         makingOrder = false;
         if (err || !res)
         {
-            console.log("Could not perform trade or update");
+            console.log('Could not perform trade or update');
             console.log(err);
             return;
         }
 
-        let newOrder = res;
-        if (!(res instanceof Order)) newOrder = new Order.fromRestA(newOrder);
+        const newOrder = new Order.FromRestA(res);
 
         // Record to active order
         if (newOrder.type === 'buy') data.activeBuy = newOrder;
         else if (newOrder.type === 'sell') data.activeSell = newOrder;
+
+        trader.resetActiveData();
     });
 }
 
@@ -115,9 +115,9 @@ function placeOrder(order)
  */
 function updateBalances(callback)
 {
-    bitfinex.getUpdatedBalances(function (balances)
+    bitfinex.getUpdatedBalances(function (err, balances)
     {
-        if (balances)
+        if (!err && balances)
         {
             data.balanceBTC = balances.balanceBTC;
             data.balanceUSD = balances.balanceUSD;
