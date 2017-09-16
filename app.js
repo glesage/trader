@@ -1,25 +1,25 @@
 /* Dependencies */
-var Sheet = require('./lib/sheet');
-var Trader = require('./lib/trader');
-var Boot = require('./lib/boot');
-var Order = require('./lib/order');
-var Logger = require('./lib/logger');
-var Bitfinex = require('./lib/bitfinex');
+const Sheet = require('./lib/sheet');
+const Trader = require('./lib/trader');
+const Boot = require('./lib/boot');
+const Order = require('./lib/order');
+const Logger = require('./lib/logger');
+const Bitfinex = require('./lib/bitfinex');
 
 /**
  * Instanciate helpers
  */
-var trader;
-var boot = new Boot();
-var sheet = new Sheet();
-var logger = new Logger(trader, sheet);
-var bitfinex = new Bitfinex(gotTrade, gotOrderUpdate);
+let trader;
+const boot = new Boot();
+const sheet = new Sheet();
+const logger = new Logger(trader, sheet);
+const bitfinex = new Bitfinex(gotTrade, gotOrderUpdate);
 
 
 /**
  * Main datastructure recording state
  */
-var data = {
+const data = {
     balanceUSD: 0,
     balanceBTC: 0,
     lastBuy: null,
@@ -27,13 +27,13 @@ var data = {
     activeBuy: null,
     activeSell: null
 };
-var makingOrder = false;
+const makingOrder = false;
 
 // A timer to wait for the initial bitfinex data to come in
 // because for some reason it sends historical data when you first
 // open the socket connection
-var gotInitialRushOfData = false;
-var initialRushTimer = 1000; // 1 second in ms
+const gotInitialRushOfData = false;
+const initialRushTimer = 1000; // 1 second in ms
 
 
 boot.init(bitfinex, function (accountData, feesData)
@@ -105,7 +105,7 @@ function placeOrder(order)
             return;
         }
 
-        var newOrder = res;
+        let newOrder = res;
         if (!(res instanceof Order)) newOrder = new Order.fromRestA(newOrder);
 
         // Record to active order
@@ -138,7 +138,8 @@ function logStuff()
 {
     setInterval(function ()
     {
-        var logData = Object.assign({}, data, trader.activeData);
+        let logData = Object.assign(
+        {}, data, trader.activeData);
 
         logData.average = trader.currentAverage;
         logData.currentSupportZone = trader.highestSupportZone;
