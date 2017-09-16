@@ -139,5 +139,5 @@ function logStuff()
         logData.currentResistanceZone = trader.lowestResistanceZone;
 
         sheet.recordTraderData(logData).catch(console.log);
-    }, 10000);
+    }, 60000);
 }
