@@ -50,9 +50,6 @@ function gotTrade(trade)
 
 function gotOrderUpdate(order)
 {
-    console.log('got order update');
-    console.log(order);
-
     updateBalances(function ()
     {
         // Ignore fee orders
