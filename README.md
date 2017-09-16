@@ -24,7 +24,4 @@ export MAX_WAIT=300000 // Maximum time to wait for price fluctuations before buy
 export RISK=0.0005 // Percentage change in best buy or sell price that would trigger a trade
 export MAX_LOSS=0.01 // Maximum percentage loss
 export MIN_GAIN=0.002 // Minimum percentage gain
-
-export ALLOW_BUY=1
-export ALLOW_SELL=1
 ```

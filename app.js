@@ -1,4 +1,4 @@
-/* Dependencies */
+// /* Dependencies */
 const Sheet = require('./lib/sheet');
 const Trader = require('./lib/trader');
 const Boot = require('./lib/boot');
@@ -6,20 +6,27 @@ const Order = require('./lib/order');
 const Logger = require('./lib/logger');
 const Bitfinex = require('./lib/bitfinex');
 
-/**
- * Instanciate helpers
- */
+const bitOptions = {
+    rest_key: process.env.BIT_REST_KEY,
+    rest_secret: process.env.BIT_REST_SECRET,
+    socket_key: process.env.BIT_WS_KEY,
+    socket_secret: process.env.BIT_WS_SECRET
+};
+
+// /**
+//  * Instanciate helpers
+//  */
 let trader;
 const boot = new Boot();
 const sheet = new Sheet();
 const logger = new Logger(trader, sheet);
-const bitfinex = new Bitfinex(gotTrade, gotOrderUpdate);
+const bitfinex = new Bitfinex(bitOptions, gotTrade, gotOrderUpdate);
 
 
 /**
  * Main datastructure recording state
  */
-const data = {
+let data = {
     balanceUSD: 0,
     balanceBTC: 0,
     lastBuy: null,
@@ -29,35 +36,24 @@ const data = {
 };
 const makingOrder = false;
 
-// A timer to wait for the initial bitfinex data to come in
-// because for some reason it sends historical data when you first
-// open the socket connection
-const gotInitialRushOfData = false;
-const initialRushTimer = 1000; // 1 second in ms
-
-
 boot.init(bitfinex, function (accountData, feesData)
 {
     data = accountData;
     trader = new Trader(feesData, placeOrder);
-    bitfinex.start();
-
-    setInterval(function ()
-    {
-        gotInitialRushOfData = true;
-    }, initialRushTimer);
 
     logStuff();
 });
 
 function gotTrade(trade)
 {
-    if (!gotInitialRushOfData) return;
-    trader.gotTrade(trade, data);
+    if (trader) trader.gotTrade(trade, data);
 }
 
 function gotOrderUpdate(order)
 {
+    console.log('got order update');
+    console.log(order);
+
     updateBalances(function ()
     {
         // Ignore fee orders
@@ -146,5 +142,5 @@ function logStuff()
         logData.currentResistanceZone = trader.lowestResistanceZone;
 
         sheet.recordTraderData(logData).catch(console.log);
-    }, 60000);
+    }, 10000);
 }

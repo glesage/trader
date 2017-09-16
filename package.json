@@ -5,7 +5,7 @@
     "dependencies":
     {
         "@google-cloud/bigquery": "0.9.6",
-        "bitfinex-api-node": "1.2.0",
+        "bitfinex-api-node": "git+https://github.com/glesage/bitfinex-api-node.git",
         "google-sheets-node-api": "0.3",
         "moment": "2.17"
     },
