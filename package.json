@@ -4,6 +4,7 @@
     "main": "app.js",
     "dependencies":
     {
+        "@google-cloud/bigquery": "0.9.6",
         "bitfinex-api-node": "1.2.0",
         "google-sheets-node-api": "0.3",
         "moment": "2.17"
