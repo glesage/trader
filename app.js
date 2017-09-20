@@ -27,9 +27,7 @@ const bitfinex = new Bitfinex(bitOptions, gotTrade, gotOrderUpdate);
  */
 let data = {
     balanceUSD: 0,
-    balanceBTC: 0,
-    lastBuy: null,
-    lastSell: null,
+    positions: [],
     activeBuy: null,
     activeSell: null
 };
@@ -50,7 +48,7 @@ function gotTrade(trade)
 
 function gotOrderUpdate(order)
 {
-    updateBalances(function ()
+    updateBalance(function ()
     {
         // Ignore fee orders
         if (order.status.indexOf('@') > -1) return;
@@ -65,7 +63,6 @@ function gotOrderUpdate(order)
             if (order.type === 'sell')
             {
                 data.activeSell = null;
-                data.lastSell = order;
             }
         }
         else if (order.status === 'ACTIVE')
@@ -86,6 +83,7 @@ function gotOrderUpdate(order)
 function placeOrder(order)
 {
     if (makingOrder || !order) return;
+
     makingOrder = true;
     bitfinex.placeOrder(order, function (err, res)
     {
@@ -110,14 +108,13 @@ function placeOrder(order)
 /**
  * Utility to get wallet balances
  */
-function updateBalances(callback)
+function updateBalance(callback)
 {
-    bitfinex.getUpdatedBalances(function (err, balances)
+    bitfinex.getUpdatedBalance(function (err, balance)
     {
-        if (!err && balances)
+        if (!err && balance)
         {
-            data.balanceBTC = balances.balanceBTC;
-            data.balanceUSD = balances.balanceUSD;
+            data.balanceUSD = balance;
         }
         if (callback) callback();
     });
@@ -132,11 +129,18 @@ function logStuff()
     setInterval(function ()
     {
         let logData = Object.assign(
-        {}, data, trader.activeData);
+        {
+            timestamp: Date.now(),
+            average: trader.currentAverage,
+            stopLossPrice: trader.stopLossPrice,
+            minSellPrice: trader.minSellPrice
+        }, data, trader.activeData);
 
-        logData.average = trader.currentAverage;
-        logData.currentSupportZone = trader.highestSupportZone;
-        logData.currentResistanceZone = trader.lowestResistanceZone;
+        const positions = data.positions;
+        if (positions && positions.length)
+        {
+            logData.boughtAt = positions[0].price;
+        }
 
         sheet.recordTraderData(logData).catch(console.log);
     }, 60000);
