@@ -54,7 +54,7 @@ function gotOrderUpdate(order)
         // Ignore fee orders
         if (order.status.indexOf('@') > -1) return;
 
-        if (order.status === 'EXECUTED')
+        if (order.status.indexOf('EXECUTED') > -1)
         {
             if (order.type === 'buy')
             {
@@ -66,12 +66,12 @@ function gotOrderUpdate(order)
                 data.activeSell = null;
             }
         }
-        else if (order.status === 'ACTIVE')
+        else if (order.status.indexOf('ACTIVE') > -1)
         {
             if (order.type === 'buy') data.activeBuy = order;
             if (order.type === 'sell') data.activeSell = order;
         }
-        else if (order.status === 'CANCELED')
+        else if (order.status.indexOf('CANCELED') > -1)
         {
             data.activeBuy = null;
             data.activeSell = null;
