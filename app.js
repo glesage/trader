@@ -27,7 +27,6 @@ const bitfinex = new Bitfinex(bitOptions, gotTrade, gotOrderUpdate);
  * Main datastructure recording state
  */
 let data = {
-    balanceUSD: 0,
     positions: [],
     activeBuy: null,
     activeSell: null
@@ -49,29 +48,12 @@ function gotTrade(trade)
 
 function gotOrderUpdate(order)
 {
-    updateBalance(function ()
+    bitfinex.getActivePositions(function ()
     {
         // Ignore fee orders
         if (order.status.indexOf('@') > -1) return;
 
-        if (order.status.indexOf('EXECUTED') > -1)
-        {
-            if (order.type === 'buy')
-            {
-                data.activeBuy = null;
-                data.lastBuy = order;
-            }
-            if (order.type === 'sell')
-            {
-                data.activeSell = null;
-            }
-        }
-        else if (order.status.indexOf('ACTIVE') > -1)
-        {
-            if (order.type === 'buy') data.activeBuy = order;
-            if (order.type === 'sell') data.activeSell = order;
-        }
-        else if (order.status.indexOf('CANCELED') > -1)
+        if (order.status.indexOf('CANCELED') > -1)
         {
             data.activeBuy = null;
             data.activeSell = null;
@@ -103,21 +85,6 @@ function placeOrder(order)
         else if (newOrder.type === 'sell') data.activeSell = newOrder;
 
         trader.resetActiveData();
-    });
-}
-
-/**
- * Utility to get wallet balances
- */
-function updateBalance(callback)
-{
-    bitfinex.getUpdatedBalance(function (err, balance)
-    {
-        if (!err && balance)
-        {
-            data.balanceUSD = balance;
-        }
-        if (callback) callback();
     });
 }
 
