@@ -38,7 +38,7 @@ boot.init(bitfinex, function (accountData, feesData)
     data = accountData;
     trader = new Trader(feesData, placeOrder);
 
-    logStuff();
+    startLogging();
 });
 
 function gotTrade(trade)
@@ -121,12 +121,12 @@ function updateBalance(callback)
 }
 
 /**
- * Every 60 seconds log in drive what the trader is thinking
- * for debugging purposes for now
+ * Log in drive what the trader is thinking
+ * for debugging purposes
  */
-function logStuff()
+function startLogging()
 {
-    setInterval(function ()
+    function logStatus()
     {
         let logData = Object.assign(
         {
@@ -143,5 +143,29 @@ function logStuff()
         }
 
         sheet.recordTraderData(logData).catch(console.log);
+    }
+
+    // Current operation status check every second
+    setInterval(function ()
+    {
+        if (trader.minSellPrice) logStatus();
+    }, 1000);
+
+    // Main status check every minute
+    setInterval(function ()
+    {
+        const busySelling = trader.minSellPrice;
+        const avgTrades = trader.average.tradesInAverage();
+
+        if (!busySelling && avgTrades > 3) logStatus();
     }, 60000);
+
+    // Low activity status check every 5 minutes
+    setInterval(function ()
+    {
+        const busySelling = trader.minSellPrice;
+        const avgTrades = trader.average.tradesInAverage();
+
+        if (!busySelling && avgTrades <= 3) logStatus();
+    }, 300000);
 }
