@@ -10,7 +10,8 @@ const bitOptions = {
     rest_key: process.env.BIT_REST_KEY,
     rest_secret: process.env.BIT_REST_SECRET,
     socket_key: process.env.BIT_WS_KEY,
-    socket_secret: process.env.BIT_WS_SECRET
+    socket_secret: process.env.BIT_WS_SECRET,
+    no_trade_time: process.env.NO_TRADE_TIME
 };
 
 /**
