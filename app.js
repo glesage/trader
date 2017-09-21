@@ -149,13 +149,13 @@ function startLogging()
     // Current operation status check every second
     setInterval(function ()
     {
-        if (trader.minSellPrice) logStatus();
+        if (trader.activeData.sellPrice) logStatus();
     }, 1000);
 
     // Main status check every minute
     setInterval(function ()
     {
-        const busySelling = trader.minSellPrice;
+        const busySelling = trader.activeData.sellPrice;
         const avgTrades = trader.average.tradesInAverage();
 
         if (!busySelling && avgTrades > 3) logStatus();
@@ -164,7 +164,7 @@ function startLogging()
     // Low activity status check every 5 minutes
     setInterval(function ()
     {
-        const busySelling = trader.minSellPrice;
+        const busySelling = trader.activeData.sellPrice;
         const avgTrades = trader.average.tradesInAverage();
 
         if (!busySelling && avgTrades <= 3) logStatus();
