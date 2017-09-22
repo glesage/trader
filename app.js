@@ -83,8 +83,6 @@ function placeOrder(order)
         // Record to active order
         if (newOrder.type === 'buy') data.activeBuy = newOrder;
         else if (newOrder.type === 'sell') data.activeSell = newOrder;
-
-        trader.resetActiveData();
     });
 }
 
