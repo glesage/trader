@@ -48,11 +48,14 @@ function gotTrade(trade)
 
 function gotOrderUpdate(order)
 {
+    console.log('gotOrderUpdate');
+    console.log(order);
+
+    // Ignore fee orders
+    if (order.status.indexOf('@') > -1) return;
+
     bitfinex.getActivePositions(function ()
     {
-        // Ignore fee orders
-        if (order.status.indexOf('@') > -1) return;
-
         if (order.status.indexOf('CANCELED') > -1)
         {
             data.activeBuy = null;
