@@ -97,9 +97,7 @@ function startLogging()
         let logData = Object.assign(
         {
             timestamp: Date.now(),
-            average: trader.currentAverage,
-            stopLossPrice: trader.stopLossPrice,
-            minSellPrice: trader.minSellPrice
+            average: trader.currentAverage
         }, data, trader.activeData);
 
         const positions = data.positions;
