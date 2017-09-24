@@ -28,7 +28,6 @@ const bitfinex = new Bitfinex(bitOptions, gotTrade, gotOrderUpdate);
  */
 let data = {
     positions: [],
-    activeBuy: null,
     activeSell: null
 };
 let makingOrder = false;
@@ -58,7 +57,6 @@ function gotOrderUpdate(order)
     {
         if (order.status.indexOf('CANCELED') > -1)
         {
-            data.activeBuy = null;
             data.activeSell = null;
         }
 
@@ -84,8 +82,7 @@ function placeOrder(order)
         const newOrder = new Order.FromRestA(res);
 
         // Record to active order
-        if (newOrder.type === 'buy') data.activeBuy = newOrder;
-        else if (newOrder.type === 'sell') data.activeSell = newOrder;
+        if (newOrder.type === 'sell') data.activeSell = newOrder;
     });
 }
 
